@@ -2,7 +2,8 @@ pacman::p_load(fastverse,
                tidyverse,
                janitor,
                glue,
-               config)
+               config,
+               paletteer)
 
 source("../airquality_GIT/gg_themes.R")
 
@@ -15,6 +16,12 @@ la_dft_lookup <- read_csv('https://storage.googleapis.com/dft-statistics/road-tr
 return(la_dft_lookup)
 
 }
+
+get_ca_tbl <- function(){
+  read_csv('https://raw.githubusercontent.com/stevecrawshaw/weca_cesap/main/data/ca_la_tbl.csv') %>% 
+    return()
+}
+
 get_weca_colours <- function(){
 
 weca_colours <- config::get(config = "colours",
@@ -70,6 +77,55 @@ authority_list <- get_authority_list()
 authorities_tbl <- make_authorities_tbl(authority_list)
 
 dft_data_tbl <- get_dft_data_tbl(authorities_tbl, auth_grouping = "weca")
+
+# much of CPCA doesn't have an equivalent dft code \ data
+ca_dft_lookup <- ca_tbl %>% 
+  inner_join(la_dft_lookup, by = join_by(LAD22CD == ONS_code))
+
+
+get_dft_tbl <- function(dft_la_id){
+  dft_url_root <- "https://storage.googleapis.com/dft-statistics/road-traffic/downloads/traffic/local_authority_id/dft_traffic_local_authority_id_"
+  
+  url <- paste0(dft_url_root, dft_la_id, '.csv')
+  
+  dft_data_tbl <- read_csv(url, col_types = cols(
+    local_authority_id = col_double(),
+    local_authority_name = col_character(),
+    year = col_double(),
+    link_length_km = col_double(),
+    link_length_miles = col_double(),
+    cars_and_taxis = col_double(),
+    all_motor_vehicles = col_double()
+  )) %>%
+    mutate(cars_all_ratio = (cars_and_taxis * 100) / all_motor_vehicles) 
+    
+  return(dft_data_tbl)
+}
+
+
+dft_data_tbl <- ca_dft_lookup$Local_authority_id %>% 
+  map(get_dft_tbl) %>% 
+  bind_rows() %>% 
+  inner_join(ca_dft_lookup, by = join_by(local_authority_id == Local_authority_id))
+
+dft_data_tbl %>% 
+  group_by(CAUTH22NM, year.x) %>% 
+  summarise(mean_ratio = mean(cars_all_ratio), .groups = 'drop') %>% 
+  mutate(lty = if_else(CAUTH22NM == "West of England", 1, 3)) %>% 
+  ggplot(aes(x = year.x, y = mean_ratio, group = CAUTH22NM, colour = CAUTH22NM, lty = lty)
+         ) +
+  scale_linetype_binned(guide = 'none') +
+  geom_line(linewidth = 1) + 
+  # scale_colour_brewer(palette = 'Spectral') +
+  # scale_color_paletteer_d('ggthemes::hc_darkunica') +
+  # scale_linewidth(range = c(0.1, 1), guide = 'none') +
+  labs(x = "Year",
+       y = str_wrap("Mean %", width = 12),
+       colour = "CA name",
+       title = "Proportion of cars to all motorised traffic",
+       caption = "https://roadtraffic.dft.gov.uk/local-authorities") +
+  theme_minimal(base_size = 18) +
+  theme(axis.title.y = element_text(angle = 0, hjust = 0, vjust = 0.5))
 
 dft_data_tbl %>% 
   ggplot(aes(x = year,
