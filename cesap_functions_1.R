@@ -8,9 +8,12 @@ pacman::p_load(tidyverse,
 
 source("../airquality_GIT/gg_themes.R")
 
-weca_colours <- config::get(file = '../config.yml',
-                            config = "colours")
+weca_colours <- config::get(config = "colours",
+                            file = '../weca_config.yml',
+                            'core') %>% 
+  map(1)
 
+weca_colours
 
 get_ca_tbl <- function(){
 # using the query endpoint for this dataset
@@ -79,6 +82,7 @@ plot_chargers <- function(charging_long_tbl,
   
 
 ca_tbl <- get_ca_tbl()
+ca_tbl %>% write_csv('data/ca_la_tbl.csv')
 
 charging_raw_tbl <- get_chargers_tbl()
 
