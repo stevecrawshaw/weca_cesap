@@ -1,9 +1,3 @@
-pacman::p_load(fastverse,
-               tidyverse,
-               janitor,
-               glue,
-               config,
-               paletteer)
 
 source("../airquality_GIT/gg_themes.R")
 
