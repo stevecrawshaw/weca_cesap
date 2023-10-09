@@ -3,8 +3,10 @@ pacman::p_load(tidyverse, # Data wrangling
                glue, # Manipulating strings
                janitor, # general data cleaning
                fs, #files
-               config # securely store API parameters
+               config, # securely store API parameters
+               duckdb
 )
+
 
 # we download the big zip file from EPC site because using the API would take too long
 # even for the subset of CA LA's
@@ -137,21 +139,23 @@ domestic_cert_ca_tbl %>% write_csv("data/domestic_cert_ca_tbl.csv", na = "")
 
 # data.table to the rescue to clean and reduce to keep only 
 # latest EPC cert data for CA areas
-# very slow - polars is a lot quicker but there is no easy option for slice_max by group
-# and the inner join by multiple columns gives incorrect results
+# very slow - polars is a lot quicker
+
+domestic_cert_ca_tbl %>% glimpse()
+
 ca_cert_subset_tbl <- setDT(domestic_cert_ca_tbl)[, 
                                            .(LMK_KEY,
                                              POSTCODE,
                                              CURRENT_ENERGY_RATING,
                                              LOCAL_AUTHORITY,
                                              PROPERTY_TYPE,
-                                             LODGEMENT_DATE,
+                                             LODGEMENT_DATETIME,
                                              TRANSACTION_TYPE,
                                              ENVIRONMENT_IMPACT_CURRENT,
                                              TENURE,
                                              UPRN)
 ][,
-  .SD[which.max(LODGEMENT_DATE)],
+  .SD[which.max(LODGEMENT_DATETIME)],
   by=UPRN
 ]
  
@@ -159,4 +163,43 @@ ca_cert_subset_tbl %>% write_rds('data/ca_cert_subset_tbl.rds')
 
 ca_cert_subset_tbl <- read_rds("data/ca_cert_subset_tbl.rds")
 
-ca_cert_subset_tbl[, `:=`(ADDRESS1 = NULL, ADDRESS2 = NULL, ADDRESS3 = NULL)]
+ca_cert_subset_tbl %>% glimpse()
+
+epc_subset_polars <- fread("data/epc_subset_polars_last.csv")
+
+setkey(ca_cert_subset_tbl, LMK_KEY)
+setkey(epc_subset_polars, LMK_KEY)
+haskey(epc_subset_polars)
+
+unmatched <- ca_cert_subset_tbl[!epc_subset_polars]
+
+base::setdiff(ca_cert_subset_tbl[, LMK_KEY],
+              epc_subset_polars[, LMK_KEY])
+
+ca_cert_subset_tbl[UPRN == "10014487620"]
+epc_subset_polars[UPRN == "10014487620"]
+
+
+# DUCKDB ----
+# still very slow to slice by group
+# polars rules this game
+con <- dbConnect(duckdb(), dbdir = "data/epc_la.duckdb", read_ony = FALSE)
+
+dbWriteTable(con, "epc_domestic_ca", domestic_cert_ca_tbl)
+
+
+ca_cert_subset_db_tbl <- dbExecute(con, "CREATE VIEW max_date_uprn AS SELECT max(LODGEMENT_DATE) _DATE,
+                                             UPRN FROM
+                                    epc_domestic_ca,
+                                    GROUP BY UPRN")
+
+de_dupe_epc <- dbGetQuery(con, "WITH RankedEPC AS (
+    SELECT *,
+           ROW_NUMBER() OVER (PARTITION BY UPRN ORDER BY LODGEMENT_DATE DESC) AS rn
+    FROM epc_domestic_ca
+)
+
+SELECT *
+FROM RankedEPC
+WHERE rn = 1;")
+
