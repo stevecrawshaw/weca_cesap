@@ -7,6 +7,7 @@ pacman::p_load(tidyverse, # Data wrangling
                duckdb
 )
 
+# This is all now in epc_polars_group.ipynb which runs very much faster than R #sadface
 
 # we download the big zip file from EPC site because using the API would take too long
 # even for the subset of CA LA's
@@ -161,7 +162,7 @@ ca_cert_subset_tbl <- setDT(domestic_cert_ca_tbl)[,
 
 domestic_cert_ca_tbl %>% 
   glimpse()
-# even collapse very slow compared to polars
+# even collapse very slow compared to polars (total 22s)
 ca_cert_collapse_tbl <- domestic_cert_ca_tbl %>% 
   fgroup_by(UPRN) %>% 
   roworder(LODGEMENT_DATETIME) %>% 
