@@ -158,7 +158,18 @@ ca_cert_subset_tbl <- setDT(domestic_cert_ca_tbl)[,
   .SD[which.max(LODGEMENT_DATETIME)],
   by=UPRN
 ]
- 
+
+domestic_cert_ca_tbl %>% 
+  glimpse()
+# even collapse very slow compared to polars
+ca_cert_collapse_tbl <- domestic_cert_ca_tbl %>% 
+  fgroup_by(UPRN) %>% 
+  roworder(LODGEMENT_DATETIME) %>% 
+  flast(na.rm = FALSE)
+  
+test <- flast(domestic_cert_ca_tbl$LODGEMENT_DATETIME,
+              g = domestic_cert_ca_tbl$UPRN, use.g.names = TRUE)
+
 ca_cert_subset_tbl %>% write_rds('data/ca_cert_subset_tbl.rds') 
 
 ca_cert_subset_tbl <- read_rds("data/ca_cert_subset_tbl.rds")
@@ -167,11 +178,16 @@ ca_cert_subset_tbl %>% glimpse()
 
 epc_subset_polars <- fread("data/epc_subset_polars_last.csv")
 
+
+epc_subset_polars %>% glimpse()
+
 setkey(ca_cert_subset_tbl, LMK_KEY)
 setkey(epc_subset_polars, LMK_KEY)
 haskey(epc_subset_polars)
 
 unmatched <- ca_cert_subset_tbl[!epc_subset_polars]
+
+glimpse(unmatched)
 
 base::setdiff(ca_cert_subset_tbl[, LMK_KEY],
               epc_subset_polars[, LMK_KEY])
