@@ -1,0 +1,44 @@
+---
+title: "pollinator markdown"
+output: word_document
+date: "2023-10-23"
+---
+
+
+**1. Sodbury Wildflower Meadow**
+- **Organisation:** Sodbury Town Council  
+- **Type:** Town Council  
+- **Location:** South Glos (Multiple locations)  
+- **Habitat Size:** 40,000 m² (4 hectares)  
+- **Project Description:** Conversion of an area in Chipping Sodbury Common into a wildflower meadow, with a managed mowing regime by volunteers and the Sodbury Woodland and Nature group. Part of the ‘B-line’ initiative by Buglife to create insect pathways across the UK.
+
+
+**2. Activating Bath's Parks for Pollinators and People**  
+- **Organisation:** Your Park  
+- **Type:** Charity  
+- **Location:** B&NES (Multiple locations), with a focus on Norfolk Crescent Green  
+- **Habitat Size:** 9,561 m²  
+- **Project Description:** Improvement of 7 urban parks in and around Bath for pollinators and local residents, including a variety of interventions such as flower beds, meadows, ponds, and seating.  
+
+**3. Brimsham Green School Eco Project**  
+- **Organisation:** Brimsham Green School  
+- **Type:** Education Provider  
+- **Location:** South Glos  
+- **Habitat Size:** 8,000 m² (2 acres)  
+- **Project Description:** Transformation of a disused sports field into a micro-farm and eco project, with various areas for pollinators, food growth, and engagement with nature. Includes pollinator-friendly installations and support for mental wellbeing.  
+
+
+**4. Well-BEEing Garden at SGS College**  
+- **Organisation:** SGS College  
+- **Type:** Education Provider  
+- **Location:** South Glos, Filton Campus  
+- **Habitat Size:** 1,050 m²  
+- **Project Description:** Creation of a garden and surrounding grass verge for pollinators and wellbeing, with educational opportunities related to gardening, food waste, and recycling.  
+
+
+**5. Orchards for Pollinators**  
+- **Organisation:** Forest of Avon Trust  
+- **Type:** Charity  
+- **Location:** Region-wide  
+- **Habitat Size:** 1,500 m²  
+- **Project Description:** Improvement and management of community and school orchards through volunteer activities, training, and educational campaigns. Focus on tree care for increased blossom production and pollinator support.  
