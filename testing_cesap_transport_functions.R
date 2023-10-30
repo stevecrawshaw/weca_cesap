@@ -1,4 +1,4 @@
-ca_tbl <- get_ca_tbl()
+ca_tbl <- get_ca_tbl(year = 2023)
 ca_tbl <- get_ca_source_tbl()
 weca_colours <- get_weca_colours()
 authority_list <- get_authority_list()
@@ -14,7 +14,6 @@ local_dft_data_tbl <- get_local_dft_data_tbl(authorities_tbl, auth_grouping = "l
 ca_dft_lookup <- get_ca_dft_lookup(ca_tbl, la_dft_lookup)
 all_ca_traffic_data_tbl <- get_all_ca_traffic_data_tbl(ca_dft_lookup)
 ca_traffic_plot <- plot_car_use_ca(all_ca_traffic_data_tbl,
-                                   year_col = year.x,
                                    meas_col = cars_all_ratio)
 ca_traffic_plot
 
