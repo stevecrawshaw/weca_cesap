@@ -1,0 +1,170 @@
+title: "Air Quality Data for Bristol: UK"
+description_html: |-
+    <b>Air quality data collected by Bristol City Council and Defra</b>
+license: "Open Government Licence V 3.0"
+license_url: "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/"
+source: "Bristol City Council"
+source_url: "https://www.bristol.gov.uk/residents/pests-pollution-noise-and-food/air-quality-and-pollution/air-quality"
+plugins:
+    datasette-block-robots:
+        literal: |-
+            User-agent: *
+            Disallow: /
+databases:
+    bristol_airquality_datasette:
+        title: Bristol Air Quality Data
+        description_html: |-
+            This is a collection of air quality datasets for the city of Bristol in the UK. It is implemented using the open source software <a href= "https://datasette.io/">datasette</a>. Although data are sourced from Bristol City Council and Defra, the datasette published here is not an official product of either body.
+        tables:
+            air-quality-data-continuous:
+                title: "Air Quality Data: Hourly Continuous"
+                sort_desc: date_time
+                description_html: |-
+                    <p>Historic and recent continuous air quality data from Bristol City Council and Defra.</p>
+                    <ul><li>NOx data are from chemiluminescent NOx analysers (API T200).</li>
+                    <li>Concentrations of pollutants are in μgm⁻³ (micrograms per metre cubed)</li>
+                    <li>Colston Avenue PM₁₀ data are from a BAM 1020 instrument and are corrected to gravimetric.</li>
+                    <li>PM₂.₅ at Parson Street School is from a heated inlet BAM and given as equivalent to gravimetric</li>
+                    <li>PM₁₀ and PM₂.₅ data from the Bristol St. Pauls site are from a BAM instrument.</li>
+                    <li>PM₁₀ data from Temple Way are from a BAM instrument.</li>
+                    <li>Hourly observations are shown.</li>
+                    <li>BCC data older than the current month have been ratified and corrected in accordance with UK air quality guidance 
+                    <a href="https://laqm.defra.gov.uk/documents/LAQM-TG16-February-18-v1.pdf"> LAQM TG.(22).</a></li>
+                    <li>For the ratification of Defra data (sites 452 and 500), please refer to the 
+                    <a href="https://uk-air.defra.gov.uk/">UK-AIR website</a>.</li>
+                    <li>Data from the Defra sites are reproduced under&nbsp;© Crown 2019 copyright Defra via uk-air.defra.gov.uk, 
+                    licenced under the <a href="http://www.nationalarchives.gov.uk/doc/open-government-licence/version/2/">Open Government Licence</a>
+                    (OGL).</li></ul>
+                columns:
+                    nox: Oxides of nitrogen (as NO₂)
+                    no2: Nitrogen dioxide
+                    'no': Nitric oxide
+                    pm10: Particulate matter < 10 microns (gravimetric)
+                    pm25: Particulate matter < 2.5 microns (gravimetric)
+                    o3: Ozone
+                    temp: Air temperature
+                    press: Air pressure
+                    rh: Relative humidity
+                units:
+                    nox: micrograms per metre cubed
+                    no2: micrograms per metre cubed
+                    'no': micrograms per metre cubed
+                    pm10: micrograms per metre cubed
+                    pm25: micrograms per metre cubed
+                    o3: micrograms per metre cubed
+                    press: mBar
+                size: 20
+            air-quality-monitoring-sites:
+                label_column: location
+                title: "Air Quality Monitoring Sites"
+                description: Site details for current and historic air quality monitoring sites
+                columns:
+                    current: Is the site operating? 1 = True
+                    pollutants: Abbreviated pollutant names for this site
+                    exposure: Is there relevant exposure nearby? Should the distance calculation apply for NO2? 1 = True
+                    tube_kerb: Distance from the tube to the kerbside in metres
+                    rec_kerb: Distance from the kerbside to the nearest relevant exposure (usually residence)
+                    aqma: Is the site within the AQMA? 1 = True
+                    elevation: Height of ground level for the site above sea level
+                    location_class: The location class according to the Air Quality Regulations (2010)
+                    colocated: If the tube is colocated, the site ID of the continuous analyser
+                    duplicate_triplicate: D or T to indicate number of tubes at site
+                    laqm_locationclass: The location class according to LAQM.TG(22)
+                size: 20
+            no2-diffusion-tube-data:
+                title: "NO₂ Diffusion Tube Data (Annual)"
+                description_html: |-
+                    <p>Data from Bristol City Council operated passive air quality monitoring devices.
+                    Diffusion tubes measure concentrations of a traffic pollutant (nitrogen dioxide or NO₂).
+                    This is separate from the 
+                    <a href="https://opendata.bristol.gov.uk/explore/dataset/air-quality-data-continuous/information/?disjunctive.location">
+                    air-quality-data-continuous</a> dataset because these data are reported annually, not hourly.</p>
+                    <div> Data displayed is <strong>annual</strong>&nbsp;<a href="https://en.wikipedia.org/wiki/Nitrogen_dioxide">
+                    nitrogen dioxide</a> (NO₂) from diffusion tubes. Data from 2010 onwards are shown.</div><div>
+                    Data are bias adjusted and annualised where required but not distance adjusted.
+                    This change in the data occurred 2019-07-31.&nbsp;
+                    Full details of air quality monitoring results are reported to Defra on an annual basis.
+                    The most recent reports on air quality in Bristol are available from the council's&nbsp;
+                    <a href="https://www.bristol.gov.uk/pests-pollution-noise-food/air-quality">web site.</a></div>
+                columns:
+                    no2: NO₂ μgm⁻³
+                    count: Number of observations in the year. Some tubes are duplicate or triplicate
+                units:
+                    no2: micrograms per metre cubed
+                size: 20
+            no2-tubes-raw:
+                title: "Raw monthly NO₂ concentrations"
+                description_html: |-
+                    Each observation is an unprocessed (raw) concentration value (μgm⁻³) for the measurement period (date_on to date_off).
+                    In later years, the measurement period accords with the
+                    <a href="https://laqm.defra.gov.uk/air-quality/air-quality-assessment/diffusion-tube-monitoring-calendar/" target="_blank">
+                    Defra diffusion tube calendar.</a>
+                    Diffusion tubes are exposed for a month at a time and the concentrations of NO₂ are measured in a laboratory. <b>These 'raw' 
+                    data cannot be directly compared to air quality objectives as post - processing of the data is needed.</b>
+                sort_desc: date_off
+                columns:
+                    no2: NO₂ μgm⁻³
+                    date_on: The date of placement for the tube(s)
+                    date_off: The date the tube was removed for analysis
+                    mid_date: A calculated mid - point for the exposure period
+                units:
+                    no2: micrograms per metre cubed
+                size: 20
+            background-grids:
+                title: "Background grids of pollutant concentrations"
+                description_html: |-
+                    Background concentrations of pollutant by year in μgm⁻³. These are Defra data modelled in 2018 and represent a single 1km grid square.
+                size: 115
+            no2_diffusion_tube_locations_vw:
+                title: "Recent annual mean NO₂ data and locations"
+                description: Annual mean NO₂ data with location data. Bias adjusted and annualised.
+            annual_mean_continuous_vw:
+                title: "Annual mean values of continuous data"
+            annual_mean_locations_vw:
+                title: "Annual mean data for continuous sites with locations"
+            ISO_metadata:
+                hidden: true
+            ISO_metadata_reference:
+                hidden: true
+            SE_external_graphics:
+                hidden: true
+            SE_fonts:
+                hidden: true
+            SE_raster_styled_layers:
+                hidden: true
+            SE_raster_styles:
+                hidden: true
+            SE_vector_styled_layers:
+                hidden: true
+            SE_vector_styles:
+                hidden: true
+            networks:
+                hidden: true
+            raster_coverages:
+                hidden: true
+            raster_coverages_keyword:
+                hidden: true
+            raster_coverages_srid:
+                hidden: true
+            rl2map_configurations:
+                hidden: true
+            stored_procedures:
+                hidden: true
+            stored_variables:
+                hidden: true
+            topologies:
+                hidden: true
+            vector_coverages:
+                hidden: true
+            vector_coverages_keyword:
+                hidden: true
+            vector_coverages_srid:
+                hidden: true
+            wms_getcapabilities:
+                hidden: true
+            wms_getmap:
+                hidden: true
+            wms_ref_sys:
+                hidden: true
+            wms_settings:
+                hidden: true

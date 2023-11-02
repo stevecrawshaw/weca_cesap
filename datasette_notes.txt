@@ -1,0 +1,47 @@
+need to run datasette from the ds01 conda env on local mc
+
+the .yml file needs spaces, not TABS
+
+ do this from the ~/r-projects/datasette folder
+ 
+ SERVE DATABASE LOCALLY from the folder where the database is r-projects/datasette/
+ 
+datasette serve bristol_airquality_datasette.db --load-extension=spatialite --metadata metadata.yml --setting sql_time_limit_ms 3500
+
+
+docker run -p 8001:8001 -v `pwd`:/mnt     datasette-with-plugins     datasette -p 8001 -h 0.0.0.0 /mnt/aq_data.db --load-extension=spatialite
+
+* need to install leaflet plugin in docker image
+* do more config of metadata.yml to tidy
+* add links to pre configured pages
+* format the charting to be bigger - with css?
+* publish to google cloud run
+
+from the folder where the database is r-projects/datasette/
+
+
+
+datasette publish cloudrun bristol_airquality_datasette.db  --metadata metadata.yml --service=brisaq --spatialite --extra-options --load-extension=spatialite --install datasette-vega --install datasette-cluster-map --install datasette-block-robots --install datasette-leaflet --install datasette-geojson-map
+
+yaml only likes spaces not TABS
+
+* streamlit apps
+
+
+# some silliness with the background grids yaml
+# revisit the lat long extraction in R for background grids
+# try to import geojson direct with spatialite as a table
+
+SPATIALITE
+
+filtered background grids file for current useful pollutants and no empty grids
+
+https://opendata.bristol.gov.uk/api/v2/catalog/datasets/background-grids-pollutant-mapping/exports/shp?select=geo_point_2d%2C%20geo_shape%2C%20x%2C%20y%2C%20id%2C%20gridid%2C%20no2_2021%2C%20no2_2022%2C%20no2_2023%2C%20no2_2024%2C%20nox_2023%2C%20nox_2024%2C%20pm10_2023%2C%20pm10_2024%2C%20pm2_5_2023%2C%20pm2_5_2024%20&where=no2_2023%20%3E0&limit=-1&offset=0&timezone=UTC
+
+https://docs.datasette.io/en/stable/spatialite.html#importing-shapefiles-into-spatialite
+
+1. create new db by importing shapefile - spatialite bristol_airquality_datasette.db
+2. from the spatialite prompt go .loadshp background-grids-pollutant-mapping background-grids UTF-8
+3. serve the database with datasette bristol_airquality_datasette.db --loadextension=spatialite
+4. Then import all the other tables once the spatialite stuff is in
+5. A template db with the background grids loaded is background_grids_base.db
