@@ -5,6 +5,16 @@ import polars as pl
 import os
 import json
 import zipfile
+from pyproj import Transformer
+
+def remove_numbers(input_string):
+    # rename columns
+    # Create a translation table that maps each digit to None
+    lowercase_string = input_string.lower()
+    translation_table = str.maketrans("", "", "0123456789")
+    # Use the translation table to remove all numbers from the input string
+    result_string = lowercase_string.translate(translation_table)
+    return result_string
 
 def get_ca_la_df(year: int, baseurl: str = 'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/') -> pl.DataFrame:
 
@@ -64,19 +74,25 @@ def get_ca_la_df(year: int, baseurl: str = 'https://services1.arcgis.com/ESMARsp
 
         return clean_ca_la_df
     
-def get_rename_dict(df):
+def get_rename_dict(df: pl.DataFrame, remove_numbers, rm_numbers = False) -> dict:
     old = df.columns
-    new = [colstring.lower() for colstring in df.columns]
+    if rm_numbers == False:
+        new = [colstring.lower() for colstring in df.columns]
+    else:
+        new = [remove_numbers(colstring).lower() for colstring in df.columns]
     return dict(zip(old, new))
         
-def get_postcode_file(url = "https://www.arcgis.com/sharing/rest/content/items/3770c5e8b0c24f1dbe6d2fc6b46a0b18/data",
-                      destination_directory = "data\\postcode_lookup"):
+def get_zipped_csv_file(url = "https://www.arcgis.com/sharing/rest/content/items/3770c5e8b0c24f1dbe6d2fc6b46a0b18/data",
+                      file_folder_name = "postcode_lookup"):
     """
     Delete any existing files in the folder
     Download and unzip a CSV lookup file for the UK
     Return the path of the downloaded file
     """
-    
+    destination_directory = f'data//{file_folder_name}'
+    if not os.path.exists(destination_directory):
+        os.makedirs(destination_directory)
+
     files = [f for f in os.listdir(destination_directory) if os.path.isfile(os.path.join(destination_directory, f))]
 
     if files:
@@ -90,19 +106,19 @@ def get_postcode_file(url = "https://www.arcgis.com/sharing/rest/content/items/3
     response = requests.get(url)
     if response.status_code != 200:
             raise Exception(f'API call failed {response.status_code}')
-    with open("postcode_lookup.zip", "wb") as f:
+    with open("file_folder_name.zip", "wb") as f:
         f.write(response.content)
 
     # Unzip the file
-    with zipfile.ZipFile("postcode_lookup.zip", "r") as zip_ref:
+    with zipfile.ZipFile("file_folder_name.zip", "r") as zip_ref:
         zip_ref.extractall(destination_directory)
 
-    postcodes_files_list =  [os.path.join(destination_directory, file) for file in os.listdir(destination_directory)]
-    if len(postcodes_files_list) == 1:
-        postcodes_path = postcodes_files_list[0]
+    files_list =  [os.path.join(destination_directory, file) for file in os.listdir(destination_directory)]
+    if len(files_list) == 1:
+        file_path = files_list[0]
     else:
          print("More than one file present")
-    return postcodes_path
+    return file_path
 
 
 def get_ca_la_codes(ca_la_df: pl.DataFrame) -> list:
@@ -212,3 +228,24 @@ def filter_geojson(input_file: str, output_file: str, property_name: str, ca_lso
         json.dump(filtered_geojson, f)
 
     return output_file
+
+def reproject(input_bng_file: str, output_wgs84_file: str) -> str:
+    # Create a transformer
+    transformer = Transformer.from_crs('epsg:27700', 'epsg:4326', always_xy=True)
+
+    # Load your GeoJSON file
+    with open(input_bng_file, 'r') as f:
+        data = json.load(f)
+
+    # Reproject each feature
+    for feature in data['features']:
+        if feature['geometry']['type'] == 'Point':
+            x, y = feature['geometry']['coordinates']
+            lon, lat = transformer.transform(x, y)
+            feature['geometry']['coordinates'] = [lon, lat]
+
+    # Save the reprojected GeoJSON
+    with open(output_wgs84_file, 'w') as f:
+        json.dump(data, f)
+    
+    return(output_wgs84_file)
