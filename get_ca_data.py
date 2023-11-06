@@ -229,7 +229,11 @@ def filter_geojson(input_file: str, output_file: str, property_name: str, ca_lso
 
     return output_file
 
-def reproject(input_bng_file: str, output_wgs84_file: str) -> str:
+def reproject(input_bng_file: str, output_wgs84_file: str, lsoa_code: str = 'LSOA21CD') -> str:
+    """
+    The filtered geojson file for pop weighted lsoa centroids in CA's
+    is projected to BNG. This function reprojects it to WGS 84 to enable visualisation in datasette
+    """
     # Create a transformer
     transformer = Transformer.from_crs('epsg:27700', 'epsg:4326', always_xy=True)
 
@@ -243,6 +247,9 @@ def reproject(input_bng_file: str, output_wgs84_file: str) -> str:
             x, y = feature['geometry']['coordinates']
             lon, lat = transformer.transform(x, y)
             feature['geometry']['coordinates'] = [lon, lat]
+
+        if lsoa_code in feature['properties']:
+            feature['properties']['lsoacd'] = feature['properties'].pop(lsoa_code)
 
     # Save the reprojected GeoJSON
     with open(output_wgs84_file, 'w') as f:
