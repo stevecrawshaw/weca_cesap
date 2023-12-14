@@ -54,8 +54,12 @@ ggplot(aes(x = year, y = cum_gwh_ca_km2, colour = CAUTH22NM)) +
   labs(title = "Cumulative Renewable Electricity Generation",
        x = "Year",
        y = "GWh<br>Km<sup>-2</sup>",
-       colour = "Combined\nAuthority") +
-  theme(axis.title.y = element_markdown(angle = 360, vjust = 0.5))
+       colour = "Combined\nAuthority",
+       caption = "Source: https://www.gov.uk/government/statistics/regional-renewable-statistics") +
+  theme(axis.title.y = element_markdown(angle = 360, vjust = 0.5),
+        plot.caption = element_text(size = 10))
+
+re_plot
 
 ggsave("plots/re_gen_ca.png",
        plot = re_plot,

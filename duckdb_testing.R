@@ -19,7 +19,7 @@ imd_tbl <- con %>%
   tbl("imd_tbl") %>% 
   glimpse()
 
-woe_las <- ca_la_tbl$ladcd
+woe_las <- ca_la_tbl$ladcd # includes north somerset
 
 woe_epc_clean_tbl <- con %>% 
   tbl("epc_clean_tbl") %>% 
@@ -28,7 +28,9 @@ woe_epc_clean_tbl <- con %>%
 
 woe_postcodes <- con %>% 
   tbl("postcodes_tbl") %>% 
-  filter(ladcd %in% woe_las)
+  filter(ladcd %in% woe_las) 
+
+woe_postcodes$ladnm %>% unique()
 
 
 epc_imd_tbl <- woe_epc_clean_tbl %>% 
