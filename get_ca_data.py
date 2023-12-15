@@ -16,7 +16,7 @@ def remove_numbers(input_string):
     result_string = lowercase_string.translate(translation_table)
     return result_string
 
-def get_ca_la_df(year: int, baseurl: str = 'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/') -> pl.DataFrame:
+def get_ca_la_df(year: int, baseurl: str = 'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/', inc_ns: bool = True) -> pl.DataFrame:
 
     """
     Download the lookup table for Combined and Local Authorities
@@ -70,9 +70,18 @@ def get_ca_la_df(year: int, baseurl: str = 'https://services1.arcgis.com/ESMARsp
 
         clean_ca_la_df = (ca_la_df
                         .rename(rename_dict))
-
-
-        return clean_ca_la_df
+        
+        ns_line_df = pl.DataFrame(
+            {'ladcd':'E06000024',
+             'ladnm': 'North Somerset',
+             'cauthcd': 'E47000009',
+             'cauthnm': 'West of England'}
+             )
+        
+        if inc_ns: # if North Somerset to be included add a line to the df
+            return clean_ca_la_df.vstack(ns_line_df)
+        else:
+            return clean_ca_la_df
     
 def get_rename_dict(df: pl.DataFrame, remove_numbers, rm_numbers = False) -> dict:
     old = df.columns
@@ -257,7 +266,7 @@ def reproject(input_bng_file: str, output_wgs84_file: str, lsoa_code: str = 'LSO
     
     return(output_wgs84_file)
 
-def ingest_certs(la_list, root_dir):
+def ingest_certs(la_list, root_dir = 'data/all-domestic-certificates'):
     """
     Loop through all folders in a root directory
     if the folder name matches an item in a list of folder names
