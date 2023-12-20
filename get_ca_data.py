@@ -3,11 +3,24 @@ from datetime import datetime
 import requests
 import polars as pl
 import os
+import duckdb
 import json
+import pathlib
 import zipfile
 from pyproj import Transformer
 
-def remove_numbers(input_string):
+"""
+Functions to get geographies and EPC data for combined authorities
+These are used in the notebook cesap_epc_load_duckdb.ipynb
+To populate a duckdb database which holds base data for analyses
+supporting the CESAP indicators. Plotting and further analysis are done in
+R scripts in this project folder.
+"""
+
+def remove_numbers(input_string: str) -> str:
+    """
+    For an input string remove all numbers and return as a string
+    """
     # rename columns
     # Create a translation table that maps each digit to None
     lowercase_string = input_string.lower()
@@ -16,7 +29,27 @@ def remove_numbers(input_string):
     result_string = lowercase_string.translate(translation_table)
     return result_string
 
-def get_ca_la_df(year: int, baseurl: str = 'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/', inc_ns: bool = True) -> pl.DataFrame:
+def wrangle_epc(certs_df: pl.DataFrame, remove_numbers = remove_numbers) -> pl.DataFrame:
+    certs_df_names = get_rename_dict(certs_df, remove_numbers)
+    """
+    Creates date artefacts and changes data types
+    """
+    wrangled_df = (        
+    certs_df
+    .with_columns([pl.col('LODGEMENT_DATETIME')
+                   .dt.date()
+                   .alias('date')])
+    .with_columns([pl.col('date').dt.year().alias('year'),
+                   pl.col('date').dt.month().cast(pl.Int16).alias('month'),
+                   pl.col('date').cast(pl.Utf8)])
+    .rename(certs_df_names)
+    .drop('lodgement_datetime'))
+    return wrangled_df
+
+def get_ca_la_df(year: int,
+                 baseurl: str = 'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/',
+                 inc_ns: bool = True,
+                 remove_numbers = remove_numbers) -> pl.DataFrame:
 
     """
     Download the lookup table for Combined and Local Authorities
@@ -26,16 +59,7 @@ def get_ca_la_df(year: int, baseurl: str = 'https://services1.arcgis.com/ESMARsp
     """
     c_year = (datetime.now().year) + 1
     start_year = c_year - 3
-    years = list(range(start_year, c_year))
-    
-    def remove_numbers(input_string):
-        # rename columns
-        # Create a translation table that maps each digit to None
-        lowercase_string = input_string.lower()
-        translation_table = str.maketrans("", "", "0123456789")
-        # Use the translation table to remove all numbers from the input string
-        result_string = lowercase_string.translate(translation_table)
-        return result_string
+    years = list(range(start_year, c_year))    
 
     try:
         assert year in years
@@ -147,7 +171,7 @@ def get_postcode_df(postcode_file: str, ca_la_codes: list) -> pl.DataFrame:
     """
 
     old = ['pcds', 'lsoa21cd', 'msoa21cd', 'ladcd', 'ladnm']
-    new = ['pcds', 'lsoacd', 'msoacd', 'ladcd', 'ladnm']
+    new = ['postcode', 'lsoacd', 'msoacd', 'ladcd', 'ladnm']
     rename_dict = dict(zip(old, new))
 
     postcodes_q = (
@@ -164,6 +188,7 @@ def get_geojson(url = "https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest
     """
     Download geoJSON from ESRI ONS OG
     Return the path of the downloaded file
+    THIS ONLY DOWNLOADS 2000 RECORDS DO NOT USE - DOWNLOAD MANUALLY
     """
     
     files = [f for f in os.listdir(destination_directory) if os.path.isfile(os.path.join(destination_directory, f))]
@@ -266,7 +291,7 @@ def reproject(input_bng_file: str, output_wgs84_file: str, lsoa_code: str = 'LSO
     
     return(output_wgs84_file)
 
-def ingest_certs(la_list, root_dir = 'data/all-domestic-certificates'):
+def ingest_dom_certs(la_list: list, root_dir: str = 'data/all-domestic-certificates'):
     """
     Loop through all folders in a root directory
     if the folder name matches an item in a list of folder names
@@ -309,5 +334,111 @@ def ingest_certs(la_list, root_dir = 'data/all-domestic-certificates'):
                     # the collected dataframe is appended to the list
                     all_dataframes.append(df)
     # Concatenate list of dataframes into one consolidated DF                
-    cons_df = pl.concat(all_dataframes)                
-    return cons_df
+    certs_df = pl.concat(all_dataframes)                
+    return certs_df
+
+def ingest_nondom_certs(la_list: list, root_dir: str = 'data/all-non-domestic-certificates') -> pl.DataFrame:
+    """
+    Read all the non domestic EPC certificates for LA in the list and stack as pl.DataFrame
+    Create new date artefacts and set data types appropriately
+    """
+    all_dataframes = []
+    nd_cols = ['LMK_KEY',
+    'POSTCODE',
+    'BUILDING_REFERENCE_NUMBER',
+    'ASSET_RATING',
+    'ASSET_RATING_BAND',
+    'PROPERTY_TYPE',
+    'LOCAL_AUTHORITY',
+    'CONSTITUENCY',
+    'TRANSACTION_TYPE',
+    'STANDARD_EMISSIONS',
+    'TYPICAL_EMISSIONS',
+    'TARGET_EMISSIONS',
+    'BUILDING_EMISSIONS',
+    'BUILDING_LEVEL',
+    'RENEWABLE_SOURCES',
+    'LODGEMENT_DATETIME',
+    'UPRN']
+    for item in la_list:
+        for folder_name in os.listdir(root_dir):
+            # Check if the folder name matches an item in la_list
+            if item in folder_name:
+                file_path = os.path.join(root_dir, folder_name, "certificates.csv")
+                # Check if certificates.csv actually exists inside the folder
+                if os.path.exists(file_path):
+                    # Optimised query which implements predicate pushdown for each file
+                    # Polars optimises the query to make it fast and efficient
+                    q = (
+                    pl.scan_csv(file_path,
+                    infer_schema_length=0) #all as strings
+                        .select(pl.col(nd_cols))
+                    .with_columns([pl.col('LODGEMENT_DATETIME').str.to_datetime(),
+                                   pl.col(['UPRN', 'ASSET_RATING']).cast(pl.Int64),
+                                   pl.col(['STANDARD_EMISSIONS', 'TYPICAL_EMISSIONS', 'TARGET_EMISSIONS', 'BUILDING_EMISSIONS']).cast(pl.Float64)])
+                    .sort(pl.col(['UPRN', 'LODGEMENT_DATETIME']))
+                    .group_by('UPRN').last()
+                    )
+                    # The query is collected for each file
+                    df = q.collect()
+                    # the collected dataframe is appended to the list
+                    all_dataframes.append(df)
+    # Concatenate list of dataframes into one consolidated DF                
+    certs_df = pl.concat(all_dataframes)                
+    return certs_df
+
+def clean_lsoa_geojson(file_path: str = 'data/geojson/for_rename.geojson',
+                       lsoacd: str = 'LSOA21CD'):
+    """
+    First download the population weighted centroids from ONS open geography portal
+    LLSOA_Dec_2021_PWC_for_England_and_Wales_2022_-7534040603619445107
+    This function removes redundant fields and renames the LSOA codes to lower case no numbers
+    And outputs geojson ready for import to the duckdb. Returns the file path of the new file.
+    """
+    try:
+        with open(file_path, 'r') as file:
+            geojson_data = json.load(file)
+
+        # Check if the file is a valid GeoJSON format
+        if 'features' not in geojson_data:
+            raise ValueError("Invalid GeoJSON format. 'features' key not found.")
+
+        # Rename the keys from 'LSOA21CD' to 'lsoacd'
+        for feature in geojson_data['features']:
+            if 'properties' in feature:
+                feature['properties'].pop('GlobalID', None)  # Remove 'GlobalID' if exists
+                feature['properties'].pop('FID', None)       # Remove 'FID' if exists
+                if lsoacd in feature['properties']:
+                    feature['properties']['lsoacd'] = feature['properties'].pop(lsoacd)
+
+        success = True
+    except Exception as e:
+        error_message = str(e)
+        success = False
+    # construct new file path for saved renamed json  
+    if success:  
+        new_stem = f'{pathlib.PurePath(file_path).stem}_{datetime.now().date().isoformat()}'
+        new_path = pathlib.PurePath(file_path).with_stem(new_stem)
+        out_file = open(new_path, "w")
+        json.dump(geojson_data, out_file)
+        out_file.close()
+    return new_path if success else False
+
+def load_data(command_list: list, db_path: str = 'data/ca_epc.duckdb', overwrite = True):
+    if os.path.isfile(db_path):
+        if overwrite:
+            os.remove(db_path)
+        else:
+            os.rename(db_path, 'data/old_db.duckdb')
+    
+    con = duckdb.connect(db_path)
+    success = True
+    for command in command_list:
+        try:
+            con.execute(command)
+        except:
+            success = False
+            print(f'{command} failed')
+    con.close()
+    return db_path if success else success
+    
