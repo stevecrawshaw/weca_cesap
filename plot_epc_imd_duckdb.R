@@ -59,7 +59,7 @@ postcodes_tbl <- con %>%
 # Join and group data ----
 
 source_tbl <- epc_clean_tbl %>% 
-  inner_join(postcodes_tbl, by = join_by(postcode == pcds)) %>% 
+  inner_join(postcodes_tbl, by = join_by(postcode == postcode)) %>% 
   inner_join(imd_tbl, by = join_by(lsoacd == lsoacd)) %>% 
   inner_join(ca_la_tbl, by = join_by(ladcd.x == ladcd)) %>% 
   group_by(lsoacd,

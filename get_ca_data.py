@@ -441,4 +441,19 @@ def load_data(command_list: list, db_path: str = 'data/ca_epc.duckdb', overwrite
             print(f'{command} failed')
     con.close()
     return db_path if success else success
-    
+
+def get_ca_la_dft_lookup(dft_csv_path: str, la_list: list) -> pl.DataFrame:
+    """
+    Read the DFT annual traffic data, get the most recent year's data and return just the ONS la codes (ladcd)
+    And the corresponding DFT ID which will be used in the R script to retrieve detailed link data. Year retained for context.
+    Filter for LA's in CA's (la_list). Not all LA's in the CA's are within this set.
+    """        
+    ca_la_dft_lookup_df = (pl.read_csv(dft_csv_path)
+    .filter(pl.col('year') == pl.col('year').max())
+    .select([pl.col('Local_authority_id').alias('dft_la_id'),
+                pl.col('ONS_code').alias('ladcd'),
+                pl.col('year')])
+    .filter(pl.col('ladcd').is_in(la_list))
+                )
+                
+    return ca_la_dft_lookup_df
