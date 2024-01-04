@@ -43,6 +43,7 @@ def wrangle_epc(certs_df: pl.DataFrame, remove_numbers = remove_numbers) -> pl.D
                    pl.col('date').dt.month().cast(pl.Int16).alias('month'),
                    pl.col('date').cast(pl.Utf8)])
     .rename(certs_df_names)
+    .filter(~pl.col('uprn').is_duplicated()) # some nulls and duplicates (~134) so remove
     .drop('lodgement_datetime'))
     return wrangled_df
 
@@ -291,14 +292,15 @@ def reproject(input_bng_file: str, output_wgs84_file: str, lsoa_code: str = 'LSO
     
     return(output_wgs84_file)
 
-def ingest_dom_certs(la_list: list, root_dir: str = 'data/all-domestic-certificates'):
+def ingest_certs(la_list: list, cols_schema: dict, root_dir: str) -> pl.DataFrame:
     """
     Loop through all folders in a root directory
     if the folder name matches an item in a list of folder names
     us an optimised polars query to ingest a subset of columns and do 
-    some transofrmations to create a single large DF of EPC data
+    some transformations to create a single large DF of EPC data
     """
     all_dataframes = []
+    cols_select_list = list(cols_schema.keys())
     for item in la_list:
         for folder_name in os.listdir(root_dir):
             # Check if the folder name matches an item in la_list
@@ -310,22 +312,8 @@ def ingest_dom_certs(la_list: list, root_dir: str = 'data/all-domestic-certifica
                     # Polars optimises the query to make it fast and efficient
                     q = (
                     pl.scan_csv(file_path,
-                    infer_schema_length=0) #all as strings
-                        .select(pl.col(['LMK_KEY',
-                        'POSTCODE',
-                        'CURRENT_ENERGY_RATING',
-                        'LOCAL_AUTHORITY',
-                        'PROPERTY_TYPE',
-                        'LODGEMENT_DATETIME',
-                        'TRANSACTION_TYPE',
-                        'ENVIRONMENT_IMPACT_CURRENT',
-                        'CO2_EMISSIONS_CURRENT',
-                        'TENURE',
-                        'UPRN']))
-                    .with_columns([pl.col('LODGEMENT_DATETIME').str.to_datetime(),
-                    pl.col('ENVIRONMENT_IMPACT_CURRENT').cast(pl.Int64),
-                    pl.col('CO2_EMISSIONS_CURRENT').cast(pl.Float32),
-                    pl.col('UPRN').cast(pl.Int64)])
+                    dtypes = cols_schema) #all as strings
+                        .select(pl.col(cols_select_list))
                     .sort(pl.col(['UPRN', 'LODGEMENT_DATETIME']))
                     .group_by('UPRN').last()
                     )
@@ -337,55 +325,7 @@ def ingest_dom_certs(la_list: list, root_dir: str = 'data/all-domestic-certifica
     certs_df = pl.concat(all_dataframes)                
     return certs_df
 
-def ingest_nondom_certs(la_list: list, root_dir: str = 'data/all-non-domestic-certificates') -> pl.DataFrame:
-    """
-    Read all the non domestic EPC certificates for LA in the list and stack as pl.DataFrame
-    Create new date artefacts and set data types appropriately
-    """
-    all_dataframes = []
-    nd_cols = ['LMK_KEY',
-    'POSTCODE',
-    'BUILDING_REFERENCE_NUMBER',
-    'ASSET_RATING',
-    'ASSET_RATING_BAND',
-    'PROPERTY_TYPE',
-    'LOCAL_AUTHORITY',
-    'CONSTITUENCY',
-    'TRANSACTION_TYPE',
-    'STANDARD_EMISSIONS',
-    'TYPICAL_EMISSIONS',
-    'TARGET_EMISSIONS',
-    'BUILDING_EMISSIONS',
-    'BUILDING_LEVEL',
-    'RENEWABLE_SOURCES',
-    'LODGEMENT_DATETIME',
-    'UPRN']
-    for item in la_list:
-        for folder_name in os.listdir(root_dir):
-            # Check if the folder name matches an item in la_list
-            if item in folder_name:
-                file_path = os.path.join(root_dir, folder_name, "certificates.csv")
-                # Check if certificates.csv actually exists inside the folder
-                if os.path.exists(file_path):
-                    # Optimised query which implements predicate pushdown for each file
-                    # Polars optimises the query to make it fast and efficient
-                    q = (
-                    pl.scan_csv(file_path,
-                    infer_schema_length=0) #all as strings
-                        .select(pl.col(nd_cols))
-                    .with_columns([pl.col('LODGEMENT_DATETIME').str.to_datetime(),
-                                   pl.col(['UPRN', 'ASSET_RATING']).cast(pl.Int64),
-                                   pl.col(['STANDARD_EMISSIONS', 'TYPICAL_EMISSIONS', 'TARGET_EMISSIONS', 'BUILDING_EMISSIONS']).cast(pl.Float64)])
-                    .sort(pl.col(['UPRN', 'LODGEMENT_DATETIME']))
-                    .group_by('UPRN').last()
-                    )
-                    # The query is collected for each file
-                    df = q.collect()
-                    # the collected dataframe is appended to the list
-                    all_dataframes.append(df)
-    # Concatenate list of dataframes into one consolidated DF                
-    certs_df = pl.concat(all_dataframes)                
-    return certs_df
+
 
 def clean_lsoa_geojson(file_path: str = 'data/geojson/for_rename.geojson',
                        lsoacd: str = 'LSOA21CD'):

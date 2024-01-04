@@ -8,14 +8,14 @@ pacman::p_load(tidyverse, # Data wrangling
                duckdb
 )
 
-is_full_year <- function(epc_clean_tbl){
+is_full_year <- function(epc_domestic_tbl){
 # checks last date in the epc datasets and returns true if 31/12/YYYY  
-last_epc_date <- epc_clean_tbl %>% 
+last_epc_date <- epc_domestic_tbl %>%
   filter(year == max(year)) %>% 
-  slice_max(date, n = 1,  with_ties = FALSE) %>% 
+  transmute(dt = as.Date(date)) %>%
+  slice_max(dt, n = 1,  with_ties = FALSE) %>% 
   collect() %>% 
-  pull(date)  %>% 
-  as.Date()
+  pull(dt)
 
 month(last_epc_date) == 12 && lubridate::day(last_epc_date) == 31
 
@@ -45,11 +45,17 @@ con <- dbConnect(duckdb(), dbdir = "data/ca_epc.duckdb")
 # The database is built in a python notebook using polars
 # in this project folder
 # as the EPC data is so big
+
+dbListTables(con)
+
 ca_la_tbl <- con %>% 
   tbl("ca_la_tbl")
 
-epc_clean_tbl <- con %>% 
-  tbl("epc_clean_tbl")
+epc_domestic_tbl <- con %>% 
+  tbl("epc_domestic_tbl")
+
+epc_non_domestic_tbl <- con %>% 
+  tbl("epc_non_domestic_tbl")
   
 imd_tbl <- con %>% 
   tbl("imd_tbl")
@@ -58,7 +64,9 @@ postcodes_tbl <- con %>%
   tbl("postcodes_tbl")
 # Join and group data ----
 
-source_tbl <- epc_clean_tbl %>% 
+
+
+source_tbl <- epc_domestic_tbl %>% 
   inner_join(postcodes_tbl, by = join_by(postcode == postcode)) %>% 
   inner_join(imd_tbl, by = join_by(lsoacd == lsoacd)) %>% 
   inner_join(ca_la_tbl, by = join_by(ladcd.x == ladcd)) %>% 
@@ -73,7 +81,7 @@ source_tbl <- epc_clean_tbl %>%
             score = mean(environment_impact_current), .groups = "drop") %>% 
   collect()
 
-full_year <- is_full_year(epc_clean_tbl = epc_clean_tbl)
+full_year <- is_full_year(epc_domestic_tbl = epc_domestic_tbl)
 
 con %>% dbDisconnect()
 
@@ -139,6 +147,33 @@ ggsave(glue("plots/epc_ca_score_imd_weighted_{max_year}.png"),
        bg = "white",
        height = 8,
        width = 12)
+
+# ---------
+epc_nd_sample %>% glimpse()
+epc_nd_sample <- epc_non_domestic_tbl %>% 
+  inner_join(postcodes_tbl, by = join_by(postcode == postcode)) %>% 
+  inner_join(ca_la_tbl, by = join_by(ladcd == ladcd)) %>% 
+  mutate(rating_cat = if_else(str_detect(asset_rating_band, "A"),
+                              "A", "B_G")) %>% 
+  group_by(cauthnm, rating_cat) %>%
+  summarise(count = n()) %>%
+  pivot_wider(names_from = rating_cat, values_from = count) %>% 
+  mutate(prop_A = round(A * 100/ B_G, 1)) %>% 
+  collect()
+  epc_nd_sample %>%  glimpse()
+
+# need proportion of A or A+ EPC's annually
+epc_nd_sample %>% 
+  ggplot(aes(x = year, y = prop_A)) +
+  geom_line() +
+  facet_wrap(~ cauthnm)
+
+
+
+
+
+
+
 
 
 
