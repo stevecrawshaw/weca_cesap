@@ -8,6 +8,7 @@ import json
 import pathlib
 import zipfile
 from pyproj import Transformer
+from pathlib import Path
 
 """
 Functions to get geographies and EPC data for combined authorities
@@ -312,8 +313,11 @@ def ingest_certs(la_list: list, cols_schema: dict, root_dir: str) -> pl.DataFram
                     # Polars optimises the query to make it fast and efficient
                     q = (
                     pl.scan_csv(file_path,
-                    dtypes = cols_schema) #all as strings
-                        .select(pl.col(cols_select_list))
+                    dtypes = cols_schema,
+                    # infer_schema_length=0
+                    ) #all as strings
+                    .select(pl.col(cols_select_list))
+                    .with_columns(pl.col('LODGEMENT_DATETIME').str.to_datetime(format='%Y-%m-%d %H:%M:%S', strict=False))
                     .sort(pl.col(['UPRN', 'LODGEMENT_DATETIME']))
                     .group_by('UPRN').last()
                     )
@@ -397,3 +401,25 @@ def get_ca_la_dft_lookup(dft_csv_path: str, la_list: list) -> pl.DataFrame:
                 )
                 
     return ca_la_dft_lookup_df
+
+def populate_sqlite(dfs_dict: dict, db_path: str = 'data/sqlite/ca_epc.db', overwrite: bool = True):
+
+    if os.path.isfile(db_path):
+        if overwrite:
+            os.remove(db_path)
+        else:
+            os.rename(db_path, f'{db_path}_old')
+
+    uri = Path("sqlite:///" + db_path).as_posix()
+    
+    for table_name, pldf in dfs_dict.items():
+        (pldf
+         .write_database(
+             table_name = table_name, 
+             if_exists = 'replace',
+             connection = uri,
+             engine = 'adbc'
+            )
+            )
+        
+
