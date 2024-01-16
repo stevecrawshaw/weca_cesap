@@ -300,8 +300,9 @@ def ingest_certs(la_list: list, cols_schema: dict, root_dir: str) -> pl.DataFram
     us an optimised polars query to ingest a subset of columns and do 
     some transformations to create a single large DF of EPC data
     """
-    all_dataframes = []
+    all_lazyframes = []
     cols_select_list = list(cols_schema.keys())
+
     for item in la_list:
         for folder_name in os.listdir(root_dir):
             # Check if the folder name matches an item in la_list
@@ -314,19 +315,15 @@ def ingest_certs(la_list: list, cols_schema: dict, root_dir: str) -> pl.DataFram
                     q = (
                     pl.scan_csv(file_path,
                     dtypes = cols_schema,
-                    # infer_schema_length=0
-                    ) #all as strings
+                    )
                     .select(pl.col(cols_select_list))
                     .with_columns(pl.col('LODGEMENT_DATETIME').str.to_datetime(format='%Y-%m-%d %H:%M:%S', strict=False))
                     .sort(pl.col(['UPRN', 'LODGEMENT_DATETIME']))
                     .group_by('UPRN').last()
                     )
-                    # The query is collected for each file
-                    df = q.collect()
-                    # the collected dataframe is appended to the list
-                    all_dataframes.append(df)
-    # Concatenate list of dataframes into one consolidated DF                
-    certs_df = pl.concat(all_dataframes)                
+                    all_lazyframes.append(q)
+    # Concatenate list of lazyframes into one consolidated DF, then collect all at once - FAST
+    certs_df = pl.concat(pl.collect_all(all_lazyframes))   # faster than intermediate step             
     return certs_df
 
 
