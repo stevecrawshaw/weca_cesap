@@ -35,7 +35,7 @@ tracker_raw_tbl <- map(sheets_list_clean, char_it) %>%
 
 tracker_clean_tbl <- tracker_raw_tbl %>% 
   filter(!is.na(action)) %>% 
-  select(cesap_pillar, action_areas, id, action, update_for_march_2024, impact, control) %>% 
+  select(cesap_pillar, action_areas, id, action, update_for_march_2024, impact, mca_control) %>% 
   mutate(action_areas = if_else(
     cesap_pillar == "Climate Resilience ",
     "Climate Resilience",
@@ -56,7 +56,7 @@ tracker_clean_gt <- tracker_clean_tbl %>%
              action ~ "Action",
              update_for_march_2024 ~ "Update: March 2024",
              impact ~ "Impact",
-             control ~ "Control") %>% 
+             mca_control ~ "Control") %>% 
   tab_style(style = cell_text(size = "large",
                               weight = "bold"),
             locations = cells_column_labels())
