@@ -56,10 +56,21 @@ tracker_clean_gt <- tracker_clean_tbl %>%
              action ~ "Action",
              update_for_march_2024 ~ "Update: March 2024",
              impact ~ "Impact",
-             mca_control ~ "Control") %>% 
+             mca_control ~ "MCA Control") %>% 
   tab_style(style = cell_text(size = "large",
                               weight = "bold"),
-            locations = cells_column_labels())
+            locations = cells_column_labels()) %>% 
+  tab_style(style = cell_text(size = "small",
+                              font = "Roboto"),
+            locations = cells_body())
+
+
+
+system_fonts("system-ui")
+
+info_google_fonts()
+
+google_font("Roboto")
 
 # to get rid of NA's
 # sub_missing(
@@ -68,6 +79,8 @@ tracker_clean_gt <- tracker_clean_tbl %>%
 #   rows = everything(),
 #   missing_text = "---"
 # )
+
+default_fonts()
 
 
 gtsave(tracker_clean_gt, "data/tracker_clean.html")
