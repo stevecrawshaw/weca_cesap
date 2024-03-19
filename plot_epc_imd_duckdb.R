@@ -41,6 +41,8 @@ caption
 
 # Get data from duckdb ----
 
+dbDisconnect(con, shutdown = TRUE)
+
 con <- dbConnect(duckdb(), dbdir = "data/ca_epc.duckdb")
 # The database is built in a python notebook using polars
 # in this project folder
