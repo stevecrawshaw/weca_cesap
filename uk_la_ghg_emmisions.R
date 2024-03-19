@@ -27,12 +27,13 @@ ghg_la_tbl <- raw_ghg %>%
          la_ghg_sector,
          greenhouse_gas,
          territorial_emissions_kt_co2e,
+         co2_emissions_within_the_scope_of_influence_of_l_as_kt_co2e,
          mid_year_population_thousands,
          area_km2) %>% 
   group_by(local_authority, calendar_year, la_ghg_sector) %>% 
   summarise(emissions_sum = sum(territorial_emissions_kt_co2e))
 
-
+names(raw_ghg)
 ghg_la_tbl %>% glimpse()
 
 make_chart_tbl <- function(ghg_la_tbl,
@@ -101,6 +102,7 @@ chart_tbl %>%
 
 
 lep_tbl %>% emission_drop()
+weca_tbl %>% emission_drop()
 
 sectors <- unique(ghg_la_tbl$la_ghg_sector)
 
@@ -113,4 +115,12 @@ weca_tbl %>%
   ggplot(aes(x = calendar_year, y = emissions_by_sector, colour = group)) +
   geom_line(linewidth = 2)
 
+
+# double check
+
+# previous fig used showed 35% drop - using what data?
+raw_ghg %>% 
+  filter(local_authority %in% ua_vec) %>% 
+  group_by(calendar_year) %>% 
+  summarise(emissions_sum = sum(territorial_emissions_kt_co2e))
 
