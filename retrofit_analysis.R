@@ -6,7 +6,8 @@ pacman::p_load(tidyverse, # Data wrangling
                sf,
                fs,
                DBI,
-               sjmisc
+               sjmisc,
+               gt
                
 )
 
@@ -14,6 +15,16 @@ imd_least_dep <- 32844L
 imd_deciles = seq(1, imd_least_dep, length.out = 11) %>% round()
 
 con <- DBI::dbConnect(duckdb(), dbdir = "data/ca_epc.duckdb")
+
+add_runif <- function(x, latlon = "lat"){
+  
+  if(latlon == "lat"){
+    offset = 0.00084
+  } else if (latlon == "long") {
+    offset = 0.00144
+  }
+runif(n = x, min = offset, max = offset)
+}
 
 make_integer_age <- function(construction_age_band){
 
@@ -51,6 +62,34 @@ construction_age_band %>%
 
 }
 
+ages <- unique(lep_epc_domestic_tbl$construction_age_band)
+
+sensible_age_band <- function(age_band){
+  
+if(is.na(age_band)){
+    cab = NA_character_
+} else if(str_starts(age_band, "England")){
+  cab = age_band
+} else if(str_starts(age_band, "INVALID|NO")){
+  cab = NA_character_
+} else {
+
+  yr <- as.integer(age_band)
+    
+cab <- case_when(
+  yr >= 2012 ~ "England and Wales: 2012 onwards",
+  yr >= 2008 ~ "England and Wales: 2007-2011",
+  yr >= 1996 ~ "England and Wales: 1996-2002",
+  yr >= 1930 ~ "England and Wales: 1930-1949",
+  yr == 1900 ~ "England and Wales: before 1900",
+  .default = age_band
+)
+  }
+return(cab)  
+  
+
+}
+
 ren_func <- function(x){
   if(str_starts(x, "d_")){
     y = paste(str_remove(x, "_d"), "_percent")
@@ -59,7 +98,6 @@ ren_func <- function(x){
   }
   return(y)
 }
-
 
 # Create a function to remove attributes
 remove_attributes <- function(x) {
@@ -95,7 +133,8 @@ lep_epc_domestic_tbl <- tbl(con, "epc_domestic_tbl") %>%
             by = join_by(postcode == postcode)) %>%
   left_join(tbl(con, "ca_tenure_lsoa_tbl") %>% collect(),
             by = join_by(lsoacd == lsoacd)) %>% 
-  select(local_authority,
+  select(lmk_key,
+         local_authority,
          property_type,
          tenure,
          walls_description,
@@ -120,7 +159,18 @@ lep_epc_domestic_tbl <- tbl(con, "epc_domestic_tbl") %>%
          owned,
          social_rented,
          private_rented
-         ) 
+         ) %>% 
+  mutate(         # imd decile 1= most deprived
+    n_imd_decile = if_else(!is.na(imd), cut(imd,
+                                            breaks = imd_deciles,
+                                            labels = FALSE,
+                                            include.lowest = TRUE
+    ),
+    NA_integer_),
+    n_nominal_construction_date = make_integer_age(construction_age_band),
+    construction_age_band = map_chr(construction_age_band,
+                                    ~sensible_age_band(.x)))
+
 
 epc_source_1 <- lep_epc_domestic_tbl %>% 
   mutate(d_roof_good = if_else(str_detect(roof_energy_eff, "Good"), 1, 0),
@@ -133,14 +183,6 @@ epc_source_1 <- lep_epc_domestic_tbl %>%
          d_epc_rent_social = if_else(str_detect(tenure, "social"), 1, 0),
          d_epc_owned = if_else(str_detect(tenure, "wn"), 1, 0),
          d_epc_rent_private = if_else(str_detect(tenure, "private"), 1, 0),
-         # imd decile 1= most deprived
-         n_imd_decile = if_else(!is.na(imd), cut(imd,
-                                            breaks = imd_deciles,
-                                            labels = FALSE,
-                                            include.lowest = TRUE
-                                            ),
-                           NA_integer_),
-         n_nominal_construction_date = make_integer_age(construction_age_band),
          built_form = na_if(built_form, "NO DATA!"),
          d_terrace = if_else(str_detect(built_form, "Terrace"),
                              1, 0),
@@ -192,6 +234,10 @@ epc_final_tbl %>% glimpse()
 
 epc_final_tbl <- read_csv("data/epc_final_tbl.csv")
 
+epc_final_tbl %>% 
+  summarise(epc_count = sum(epc_properties_count),
+            dwellings = sum(dwell_lsoa, na.rm = TRUE))
+
 
 pcd_lu_tbl <- read_csv("data/PCD_OA21_LSOA21_MSOA21_LAD_AUG23_UK_LU.csv")
 
@@ -238,25 +284,66 @@ lsoa_poly_sf <- tbl(con, "lsoa_poly_tbl") %>%
 
 lsf <- st_read(con, "lsoa_poly_tbl", EWKB = FALSE)
 
+# export cleaned EPC property data as point data to ODS
+lep_epc_domestic_point_ods_tbl <- lep_epc_domestic_tbl %>% 
+  # mutate(lat_jitter = lat + add_runif(lat, latlon = "lat"),
+  #        long_jitter = long + add_runif(long, latlon = "long"),
+  #        lat = NULL,
+  #        long = NULL) %>% 
+  left_join(lep_la_tbl %>% 
+              select(ladcd, ladnm),
+            by = join_by(local_authority == ladcd)) %>% 
+  rownames_to_column()
 
-lsoa_poly_sf$geometry <- sf::st_as_sfc(structure(as.list(lsoa_poly_sf$geom), class = "WKB")) 
+lep_epc_domestic_point_ods_tbl %>% glimpse()
+
+# a demo table for the report
+
+lep_epc_domestic_point_ods_tbl %>% 
+  filter(!is.na(construction_age_band)) %>% 
+  group_by(`Construction Age Band` = construction_age_band,
+           `EPC Rating` = current_energy_rating
+           ) %>% 
+  summarise(properties = n(), .groups = "drop") %>% 
+  pivot_wider(id_cols = `Construction Age Band`,
+              names_from =`EPC Rating`,
+              values_from = properties) %>% 
+  write_csv("data/age_epc_table.csv", na = "")
+
+# ODS output for the pojnt data
+
+lep_epc_domestic_point_ods_tbl %>% 
+  write_csv("data/lep_epc_domestic_point_ods_tbl.csv")
+
+
+# records disappearing demo data
+  sample_norownames <- lep_epc_domestic_point_ods_tbl %>% 
+  # rownames_to_column() %>% 
+  head(1000) 
+
+sample_rownames <- lep_epc_domestic_point_ods_tbl %>% 
+  rownames_to_column() %>% 
+  head(1000) 
+
+
+sample_norownames %>% 
+  write_csv("data/sample_norownames.csv", na = "")
+
+sample_rownames %>% 
+  write_csv("data/sample_rownames.csv", na = "")
+
+
+
+
+
+
+
 
 
 
 dbDisconnect(con, shutdown=TRUE)
 
 #-------------------------
-
-vec <- 1:100
-breaks = seq(1, 101, by = 10)
-
-breaks
-
-cut(vec, breaks = breaks, labels = FALSE, include.lowest = TRUE)
-
-?cut
-
-
 
 
 
