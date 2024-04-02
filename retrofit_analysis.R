@@ -11,6 +11,7 @@ pacman::p_load(tidyverse, # Data wrangling
                
 )
 
+
 imd_least_dep <- 32844L
 imd_deciles = seq(1, imd_least_dep, length.out = 11) %>% round()
 
@@ -114,17 +115,12 @@ lep_la_tbl <- tbl(con, "ca_la_tbl") %>%
 lep_codes <- lep_la_tbl  %>% 
   pull(ladcd)
 
-pc_centroids_tbl <- read_csv("data/postcode_centroids.csv")
+lep_postcodes_tbl <- tbl(con, "postcode_centroids_tbl") %>% 
+  filter(laua %in% lep_codes) %>%
+  select(postcode = pcds, ladcd = laua, lsoa21, lsoa11, msoa11, msoa21, imd, lat, long, x, y) %>%
+  collect()
 
-lep_postcodes_tbl <- tbl(con, "postcodes_tbl") %>% 
-  filter(ladcd %in% lep_codes) %>% 
-  collect() %>% 
-  inner_join(pc_centroids_tbl, by = join_by(postcode == PCDS)) %>%
-  clean_names() %>% 
-  select(lsoacd, postcode, ladcd, lat, long, imd, msoacd)
-
-unique(lep_postcodes_tbl$lsoacd) 
-
+uniqueN(lep_postcodes_tbl$lsoa21) 
 
 lep_epc_domestic_tbl <- tbl(con, "epc_domestic_tbl") %>%  
   filter(local_authority %in% lep_codes) %>% 
@@ -132,8 +128,8 @@ lep_epc_domestic_tbl <- tbl(con, "epc_domestic_tbl") %>%
   left_join(lep_postcodes_tbl, 
             by = join_by(postcode == postcode)) %>%
   left_join(tbl(con, "ca_tenure_lsoa_tbl") %>% collect(),
-            by = join_by(lsoacd == lsoacd)) %>% 
-  select(lmk_key,
+            by = join_by(lsoa21 == lsoacd)) %>% 
+  select(lmk_key, # include as otherwise duplicate values occur and these are removed by ODS
          local_authority,
          property_type,
          tenure,
@@ -150,8 +146,8 @@ lep_epc_domestic_tbl <- tbl(con, "epc_domestic_tbl") %>%
          current_energy_rating,
          potential_energy_rating,
          built_form,
-         lsoacd,
-         msoacd,
+         lsoa21,
+         msoa21,
          lat,
          long,
          imd,
@@ -204,7 +200,7 @@ epc_source_2 <- epc_source_1 %>%
 
 
 epc_pc_tbl <- epc_source_2 %>% 
-  group_by(local_authority, lsoacd) %>% 
+  group_by(local_authority, lsoa21) %>% 
   summarise(across(starts_with("d_"), ~sum(.x, na.rm = TRUE) * 100/ n()) %>% round(1),
             across(starts_with("n_"), ~mean(.x, na.rm = TRUE) %>% round()),
             .groups = "drop") %>% 
@@ -213,8 +209,9 @@ epc_pc_tbl <- epc_source_2 %>%
                              .x))
 epc_pc_tbl %>% glimpse()
 
+
 epc_sum_tbl <- epc_source_2 %>% 
-  group_by(local_authority, lsoacd) %>% 
+  group_by(local_authority, lsoa21) %>% 
   summarise(across(starts_with("d_"), ~sum(.x, na.rm = TRUE)),
             epc_properties_count = n(),
             .groups = "drop") %>% 
@@ -223,7 +220,7 @@ epc_sum_tbl <- epc_source_2 %>%
                        .x))
 
 epc_final_tbl <- epc_pc_tbl %>% 
-  inner_join(epc_sum_tbl, by = join_by(lsoacd == lsoacd,
+  inner_join(epc_sum_tbl, by = join_by(lsoa21 == lsoa21,
                                        local_authority == local_authority)) %>% 
   rename_with(~str_remove(.x, "n_"))
 
@@ -241,7 +238,7 @@ epc_final_tbl %>%
 
 pcd_lu_tbl <- read_csv("data/PCD_OA21_LSOA21_MSOA21_LAD_AUG23_UK_LU.csv")
 
-lsoa_geogs_tbl <- pc_lu_tbl %>% 
+lsoa_geogs_tbl <- pcd_lu_tbl %>% 
   filter(ladcd %in% lep_codes) %>% 
   group_by(lsoacd = lsoa21cd) %>% 
   summarise(msoacd = first(msoa21cd),
@@ -313,7 +310,7 @@ lep_epc_domestic_point_ods_tbl %>%
 # ODS output for the pojnt data
 
 lep_epc_domestic_point_ods_tbl %>% 
-  write_csv("data/lep_epc_domestic_point_ods_tbl.csv")
+  write_csv("data/lep_epc_domestic_point_ods_tbl.csv", na = "")
 
 
 # records disappearing demo data
@@ -342,6 +339,7 @@ sample_rownames %>%
 
 
 dbDisconnect(con, shutdown=TRUE)
+
 
 #-------------------------
 

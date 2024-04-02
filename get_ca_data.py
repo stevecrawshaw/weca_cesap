@@ -111,10 +111,17 @@ def get_ca_la_df(year: int,
     
 def get_rename_dict(df: pl.DataFrame, remove_numbers, rm_numbers = False) -> dict:
     old = df.columns
+    counts = {}
     if rm_numbers == False:
         new = [colstring.lower() for colstring in df.columns]
     else:
         new = [remove_numbers(colstring).lower() for colstring in df.columns]
+    
+    for i, item in enumerate(new):
+        if new.count(item) > 1:
+            counts[item] = counts.get(item, 0) + 1
+            new[i] = f"{item}_{counts[item]}"
+
     return dict(zip(old, new))
         
 def get_zipped_csv_file(url = "https://www.arcgis.com/sharing/rest/content/items/3770c5e8b0c24f1dbe6d2fc6b46a0b18/data",
