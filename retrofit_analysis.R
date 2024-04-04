@@ -1,3 +1,5 @@
+# prepare data from EPC and other tables in ca_epc.duckdb for publishing on the open data portal
+
 pacman::p_load(tidyverse, # Data wrangling
                fastverse,
                glue, # Manipulating strings
@@ -8,7 +10,6 @@ pacman::p_load(tidyverse, # Data wrangling
                DBI,
                sjmisc,
                gt
-               
 )
 
 
@@ -91,6 +92,17 @@ return(cab)
 
 }
 
+make_sensible_tenure <- function(tenure_str){
+  
+  case_when(
+    str_detect(tenure_str, "wner-occupied") ~ "Owner occupied",
+    str_detect(tenure_str, "social") ~ "Social rented",
+    str_detect(tenure_str, "private") ~ "Private rented",
+    .default = "Unknown"
+  )
+  
+}
+
 ren_func <- function(x){
   if(str_starts(x, "d_")){
     y = paste(str_remove(x, "_d"), "_percent")
@@ -165,7 +177,16 @@ lep_epc_domestic_tbl <- tbl(con, "epc_domestic_tbl") %>%
     NA_integer_),
     n_nominal_construction_date = make_integer_age(construction_age_band),
     construction_age_band = map_chr(construction_age_band,
-                                    ~sensible_age_band(.x)))
+                                    ~sensible_age_band(.x)),
+    tenure = map_chr(tenure, ~make_sensible_tenure(.x)))
+
+lep_epc_domestic_tbl %>% glimpse()
+
+table(lep_epc_domestic_tbl$tenure) %>% 
+enframe()
+
+
+
 
 
 epc_source_1 <- lep_epc_domestic_tbl %>% 
