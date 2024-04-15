@@ -64,7 +64,7 @@ construction_age_band %>%
 
 }
 
-ages <- unique(lep_epc_domestic_tbl$construction_age_band)
+# ages <- unique(lep_epc_domestic_tbl$construction_age_band)
 
 sensible_age_band <- function(age_band){
   
@@ -91,6 +91,35 @@ return(cab)
   
 
 }
+
+
+get_mid_age <- function(construction_age_band){
+  int_vec <- str_extract_all(construction_age_band, "\\b\\d{4}\\b") %>%
+    # unlist() %>%
+    pluck(1) %>% 
+    as.integer()
+#browser()
+  out = case_when(
+    is.na(int_vec) ~ NA_integer_,
+    length(int_vec) == 1 ~ int_vec,
+    length(int_vec) == 2 ~ mean(int_vec) %>% round(0),
+    .default = NA_integer_,
+    .ptype = integer()
+  )
+  out[1]
+}
+
+test_cab <- sample(lep_epc_domestic_tbl$construction_age_band, size = 100)
+
+
+map(test_cab, get_mid_age) #%>% 
+  map(~mean(.x, na.rm = TRUE))
+
+
+map_int(lep_epc_domestic_tbl$construction_age_band[1:20], get_mid_age) #%>% length()
+
+
+
 
 make_sensible_tenure <- function(tenure_str){
   
@@ -136,7 +165,7 @@ uniqueN(lep_postcodes_tbl$lsoa21)
 
 lep_epc_domestic_tbl <- tbl(con, "epc_domestic_tbl") %>%  
   filter(local_authority %in% lep_codes) %>% 
-  collect() %>%
+  collect() %>% 
   left_join(lep_postcodes_tbl, 
             by = join_by(postcode == postcode)) %>%
   left_join(tbl(con, "ca_tenure_lsoa_tbl") %>% collect(),
@@ -144,6 +173,7 @@ lep_epc_domestic_tbl <- tbl(con, "epc_domestic_tbl") %>%
   select(lmk_key, # include as otherwise duplicate values occur and these are removed by ODS
          local_authority,
          property_type,
+         transaction_type,
          tenure,
          walls_description,
          roof_description,
@@ -157,6 +187,14 @@ lep_epc_domestic_tbl <- tbl(con, "epc_domestic_tbl") %>%
          construction_age_band,
          current_energy_rating,
          potential_energy_rating,
+         co2_emissions_current,
+         co2_emissions_potential,
+         co2_emiss_curr_per_floor_area,
+         number_habitable_rooms,
+         number_heated_rooms,
+         photo_supply,
+         total_floor_area,
+         building_reference_number,
          built_form,
          lsoa21,
          msoa21,
@@ -166,7 +204,10 @@ lep_epc_domestic_tbl <- tbl(con, "epc_domestic_tbl") %>%
          total,
          owned,
          social_rented,
-         private_rented
+         private_rented,
+         date,
+         year,
+         month
          ) %>% 
   mutate(         # imd decile 1= most deprived
     n_imd_decile = if_else(!is.na(imd), cut(imd,
@@ -175,17 +216,32 @@ lep_epc_domestic_tbl <- tbl(con, "epc_domestic_tbl") %>%
                                             include.lowest = TRUE
     ),
     NA_integer_),
-    n_nominal_construction_date = make_integer_age(construction_age_band),
-    construction_age_band = map_chr(construction_age_band,
-                                    ~sensible_age_band(.x)),
-    tenure = map_chr(tenure, ~make_sensible_tenure(.x)))
+    n_nominal_construction_date = map_int(construction_age_band, get_mid_age),
+    # construction_age_band = map_chr(construction_age_band,
+    #                                 ~sensible_age_band(.x)),
+    tenure =   case_when(
+      str_detect(tenure, "wner-occupied") ~ "Owner occupied",
+      str_detect(tenure, "social") ~ "Social rented",
+      str_detect(tenure, "private") ~ "Private rented",
+      .default = "Unknown"
+    ))
 
 lep_epc_domestic_tbl %>% glimpse()
+
+nom_tbl <- lep_epc_domestic_tbl %>% 
+  transmute(nom_list = map(construction_age_band, ~str_extract_all(.x, "\\b\\d{4}\\b") %>%
+           # unlist() %>%
+           pluck(1) %>% 
+           as.integer() %>% 
+             mean(na.rm = TRUE) ))
+
+
+nom_tbl %>% glimpse()
 
 table(lep_epc_domestic_tbl$tenure) %>% 
 enframe()
 
-
+# map_chr(tenure, ~make_sensible_tenure(.x)
 
 
 
@@ -239,6 +295,7 @@ epc_sum_tbl <- epc_source_2 %>%
   rename_with(~if_else(str_starts(.x, "d_"),
                        paste0(str_remove(.x, "d_"), "_sum"),
                        .x))
+epc_sum_tbl %>% glimpse()
 
 epc_final_tbl <- epc_pc_tbl %>% 
   inner_join(epc_sum_tbl, by = join_by(lsoa21 == lsoa21,
