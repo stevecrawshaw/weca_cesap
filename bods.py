@@ -15,7 +15,7 @@ with open('../config.yml', 'r') as file:
 # %%
 
 apikey = data['bods']['apikey']
-
+#,'010', '017', '018', '019'
  # %%
 
 my_bus_data_object = TimetableExtractor(api_key=apikey 
@@ -24,7 +24,7 @@ my_bus_data_object = TimetableExtractor(api_key=apikey
                                  ,service_line_level=True # True if you require Service line data
                                  , atco_code=['010', '017', '018', '019'] 
                                  #, nocs=['FBRI']
-                                 ,stop_level=True # True if you require stop level data
+                                 ,stop_level=False # True if you require stop level data
                                  )
 
 # %%
@@ -41,12 +41,7 @@ type(dataset_level)
 my_bus_data_object.save_metadata_to_csv()
 # %%
 
-bdo_sll = TimetableExtractor(api_key=apikey 
-                                 ,limit=1000 # How many datasets to view
-                                 ,status = 'published' # Only view published datasets
-                                 ,service_line_level=True # True if you require Service line data 
-                                 ,stop_level=False # True if you require stop level data
-                                 )
+bdo_sll = my_bus_data_object
 
 service_line_level = bdo_sll.service_line_extract
 
