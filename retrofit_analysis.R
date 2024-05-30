@@ -118,9 +118,6 @@ map(test_cab, get_mid_age) #%>%
 
 map_int(lep_epc_domestic_tbl$construction_age_band[1:20], get_mid_age) #%>% length()
 
-
-
-
 make_sensible_tenure <- function(tenure_str){
   
   case_when(
