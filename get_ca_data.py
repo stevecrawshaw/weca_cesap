@@ -398,8 +398,8 @@ def get_ca_la_dft_lookup(dft_csv_path: str, la_list: list) -> pl.DataFrame:
     """        
     ca_la_dft_lookup_df = (pl.read_csv(dft_csv_path)
     .filter(pl.col('year') == pl.col('year').max())
-    .select([pl.col('Local_authority_id').alias('dft_la_id'),
-                pl.col('ONS_code').alias('ladcd'),
+    .select([pl.col('local_authority_id').alias('dft_la_id'),
+                pl.col('local_authority_code').alias('ladcd'),
                 pl.col('year')])
     .filter(pl.col('ladcd').is_in(la_list))
                 )
