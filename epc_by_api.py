@@ -19,7 +19,12 @@ la_list = (ca_la_df['ladcd'])
 
 
 # %%
-def get_csv_requests(la: str, epc_key: str):
+def get_epc_csv(la: str, epc_key: str):
+    '''
+    Uses the opendatacommunities API to get EPC data for a given local authority and writes it to a CSV file
+    the epc auth_token is in the config.yml file in parent directory
+    This function uses pagination cribbed from https://epc.opendatacommunities.org/docs/api/domestic#domestic-pagination
+    '''
     # Page size (max 5000)
     query_size = 5000
     # Output file name
@@ -65,13 +70,13 @@ def get_csv_requests(la: str, epc_key: str):
             first_request = False
 #%%
 
-for la in la_list:
-    get_csv(la, epc_key)
+# for la in la_list:
+#     get_epc_csv(la, epc_key)
 
 #%%
-
+# schema for the EPC data
 cols_schema_adjusted = {
-    'lmk-key': pl.Utf8,
+ 'lmk-key': pl.Utf8,
  'postcode': pl.Utf8,
  'local-authority': pl.Utf8,
  'property-type': pl.Utf8,
@@ -123,7 +128,6 @@ cols_schema_adjusted = {
  'building-reference-number': pl.Int64}
 
 
-
 #%%
 
 def ingest_dom_certs_csv(la_list: list, cols_schema: dict) -> pl.DataFrame:
@@ -131,7 +135,11 @@ def ingest_dom_certs_csv(la_list: list, cols_schema: dict) -> pl.DataFrame:
     Loop through all csv files in the epc_csv folder and ingest them into a single DF. Use an optimised polars query to ingest a subset of columns and do some transformations to create a single large DF of EPC data
     """
     all_lazyframes = []
+    # rename columns to replace hyphens with underscores
     cols_select_list = list(cols_schema.keys())
+    new_cols_names = [col.replace('-', '_') for col in cols_select_list]
+    renamed_cols_dict = dict(zip(cols_select_list, new_cols_names))
+
 
     for item in la_list:
 
@@ -152,6 +160,7 @@ def ingest_dom_certs_csv(la_list: list, cols_schema: dict) -> pl.DataFrame:
             .with_columns(pl.col('lodgement-datetime').str.to_datetime(format='%Y-%m-%d %H:%M:%S', strict=False))
             .sort(pl.col(['uprn', 'lodgement-datetime']))
             .group_by('uprn').last()
+            .rename(renamed_cols_dict)
             )
             all_lazyframes.append(q)
     # Concatenate list of lazyframes into one consolidated DF, then collect all at once - FAST
@@ -159,13 +168,48 @@ def ingest_dom_certs_csv(la_list: list, cols_schema: dict) -> pl.DataFrame:
     return certs_df
 
 #%%
-
-all_dom_epc = ingest_dom_certs_csv(la_list, cols_schema_adjusted)
+all_dom_epc_raw = ingest_dom_certs_csv(la_list, cols_schema_adjusted)
 
 #%%
 all_dom_epc.write_parquet('data/all_domestic_epc.parquet')
 #%%
+all_dom_epc_raw.glimpse()
 
-pl.scan_csv('data/epc_csv/epc_E06000001.csv',
-            encoding='utf8-lossy', ignore_errors=True).collect()
+
+#%%
+def wrangle_epc(certs_df: pl.DataFrame) -> pl.DataFrame:
+  
+    """
+    Creates date artefacts and changes data types
+    """
+    wrangled_df = (        
+    certs_df
+    .with_columns([pl.col('lodgement_datetime')
+                   .dt.date()
+                   .alias('date')])
+    .with_columns([pl.col('date').dt.year().alias('year'),
+                   pl.col('date').dt.month().cast(pl.Int16).alias('month'),
+                   pl.col('date').cast(pl.Utf8)])
+    # .rename(certs_df_names)
+    .filter(~pl.col('uprn').is_duplicated()) # some nulls and duplicates (~134) so remove
+    .drop('lodgement_datetime'))
+    return wrangled_df
 # %%
+
+wrangled_certs = wrangle_epc(all_dom_epc_raw)
+
+#%%
+
+wrangled_certs.glimpse()
+#%%
+lep_codes = (ca_la_df
+ .filter(pl.col('ladnm').is_in(['Bristol, City of', 'South Gloucestershire', 'North Somerset', 'Bath and North East Somerset']))
+ .select('ladcd')
+ ).to_series()
+
+#%%
+
+#check expected number of certificates
+(wrangled_certs
+ .filter(pl.col('local_authority').is_in(lep_codes))
+).shape
