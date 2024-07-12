@@ -47,6 +47,7 @@ def wrangle_epc(certs_df: pl.DataFrame) -> pl.DataFrame:
     """
     wrangled_df = (        
     certs_df
+    .rename(lambda col: col.lower())
     .with_columns([pl.col('lodgement_datetime')
                    .dt.date()
                    .alias('date')])
