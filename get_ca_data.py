@@ -264,11 +264,11 @@ def filter_geojson(input_file: str, output_file: str, property_name: str, ca_lso
     # Load GeoJSON file
     with open(input_file, 'r') as f:
         geojson_data = json.load(f)
-
-    # Filter features based on the specified property and values
+    ca_lsoa_set = set(ca_lsoa_codes) 
+        # Filter features based on the specified property and values
     filtered_features = [
         feature for feature in geojson_data['features']
-        if feature['properties'].get(property_name) in ca_lsoa_codes
+        if feature['properties'].get(property_name) in ca_lsoa_set
     ]
 
     # Create new GeoJSON structure with filtered features
