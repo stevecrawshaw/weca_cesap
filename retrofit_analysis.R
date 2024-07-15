@@ -9,7 +9,8 @@ pacman::p_load(tidyverse, # Data wrangling
                fs,
                DBI,
                sjmisc,
-               gt
+               gt,
+               santoku
 )
 
 
@@ -18,89 +19,25 @@ imd_deciles = seq(1, imd_least_dep, length.out = 11) %>% round()
 
 con <- DBI::dbConnect(duckdb(), dbdir = "data/ca_epc.duckdb")
 
-add_runif <- function(x, latlon = "lat"){
-  
-  if(latlon == "lat"){
-    offset = 0.00084
-  } else if (latlon == "long") {
-    offset = 0.00144
-  }
-runif(n = x, min = offset, max = offset)
+make_epochs <- function(year_integer, breaks = c(1799, 1900, 1930, 2024),
+                        labels = c("Pre 1900", "1900 - 1930", "1930 - Present")){
+  # use santoku::chop to create bands of construction ages
+  year_integer %>% 
+    map(~chop(.x,
+              breaks,
+              labels)) %>%
+    unlist()
 }
-
-make_integer_age <- function(construction_age_band){
-
-  # clean the construction band field
-  # making a nominal date of construction where there is a range
-  # 1900 means before 1900
-  
-mid_age <- function(age){
-  
-  if(!is.na(age)){
-  if(str_detect(age, "-")){
-    
-  ints <- str_split(age, pattern = "-") %>% 
-    pluck(1) %>% 
-    map_dbl(as.numeric) %>% 
-    round()
-  
-  (((ints[2] - ints[1]) / 2) + ints[1]) %>% round()
-  } else {
-    round(as.numeric(age), 0)
-  }} else {
-    NA_integer_
-  }
-  
-  }
-
-construction_age_band %>% 
-  str_remove("England and Wales: ") %>% 
-  str_remove("before ") %>% 
-  str_remove(" onwards") %>% 
-  str_remove("INVALID!") %>% 
-  str_remove("NO DATA!") %>% 
-  na_if("") %>% 
-  map_int(mid_age)
-
-}
-
-# ages <- unique(lep_epc_domestic_tbl$construction_age_band)
-
-sensible_age_band <- function(age_band){
-  
-if(is.na(age_band)){
-    cab = NA_character_
-} else if(str_starts(age_band, "England")){
-  cab = age_band
-} else if(str_starts(age_band, "INVALID|NO")){
-  cab = NA_character_
-} else {
-
-  yr <- as.integer(age_band)
-    
-cab <- case_when(
-  yr >= 2012 ~ "England and Wales: 2012 onwards",
-  yr >= 2008 ~ "England and Wales: 2007-2011",
-  yr >= 1996 ~ "England and Wales: 1996-2002",
-  yr >= 1930 ~ "England and Wales: 1930-1949",
-  yr == 1900 ~ "England and Wales: before 1900",
-  .default = age_band
-)
-  }
-return(cab)  
-  
-
-}
-
 
 get_mid_age <- function(construction_age_band){
   int_vec <- str_extract_all(construction_age_band, "\\b\\d{4}\\b") %>%
     # unlist() %>%
     pluck(1) %>% 
     as.integer()
-#browser()
+
   out = case_when(
     is.na(int_vec) ~ NA_integer_,
+    length(int_vec) == 1 & int_vec == 1900L ~ 1899L,
     length(int_vec) == 1 ~ int_vec,
     length(int_vec) == 2 ~ mean(int_vec) %>% round(0),
     .default = NA_integer_,
@@ -110,33 +47,23 @@ get_mid_age <- function(construction_age_band){
 }
 
 test_cab <- sample(lep_epc_domestic_tbl$construction_age_band, size = 100)
+# 
+# test_cab <- "Before 1900"
+map(test_cab, get_mid_age) #%>%
+#   map(~mean(.x, na.rm = TRUE))
 
 
-map(test_cab, get_mid_age) #%>% 
-  map(~mean(.x, na.rm = TRUE))
+#map_int(lep_epc_domestic_tbl$construction_age_band[1:20], get_mid_age) #%>% length()
 
-
-map_int(lep_epc_domestic_tbl$construction_age_band[1:20], get_mid_age) #%>% length()
-
-make_sensible_tenure <- function(tenure_str){
-  
-  case_when(
-    str_detect(tenure_str, "wner-occupied") ~ "Owner occupied",
-    str_detect(tenure_str, "social") ~ "Social rented",
-    str_detect(tenure_str, "private") ~ "Private rented",
-    .default = "Unknown"
-  )
-  
-}
-
-ren_func <- function(x){
-  if(str_starts(x, "d_")){
-    y = paste(str_remove(x, "_d"), "_percent")
-  } else {
-    y = x
-  }
-  return(y)
-}
+# 
+# ren_func <- function(x){
+#   if(str_starts(x, "d_")){
+#     y = paste(str_remove(x, "_d"), "_percent")
+#   } else {
+#     y = x
+#   }
+#   return(y)
+# }
 
 # Create a function to remove attributes
 remove_attributes <- function(x) {
@@ -161,6 +88,7 @@ lep_postcodes_tbl <- tbl(con, "postcode_centroids_tbl") %>%
 uniqueN(lep_postcodes_tbl$lsoa21) 
 
 lep_epc_domestic_tbl <- tbl(con, "epc_domestic_tbl") %>%  
+  #head(1000) %>% # <------------------------------------------
   filter(local_authority %in% lep_codes) %>% 
   collect() %>% 
   left_join(lep_postcodes_tbl, 
@@ -214,16 +142,27 @@ lep_epc_domestic_tbl <- tbl(con, "epc_domestic_tbl") %>%
     ),
     NA_integer_),
     n_nominal_construction_date = map_int(construction_age_band, get_mid_age),
-    # construction_age_band = map_chr(construction_age_band,
-    #                                 ~sensible_age_band(.x)),
-    tenure =   case_when(
-      str_detect(tenure, "wner-occupied") ~ "Owner occupied",
-      str_detect(tenure, "social") ~ "Social rented",
-      str_detect(tenure, "private") ~ "Private rented",
-      .default = "Unknown"
-    ))
+    # tenure =   case_when(
+    #   str_detect(tenure, "wner-occupied") ~ "Owner occupied",
+    #   str_detect(tenure, "social") ~ "Social rented",
+    #   str_detect(tenure, "private") ~ "Private rented",
+    #   .default = "Unknown"
+    # ),
+    tenure = recode_char(tenure,
+                         "owner-occupied" = "Owner occupied",
+                         "Owner-occupied" = "Owner occupied",
+                         "Rented (social)" = "Social rented",
+                         "rental (social)" = "Social rented",
+                         "private" = "Private rented",
+                         "rental (private)" = "Private rented",
+                         "Rented (private)" =  "Private rented",
+                         default = "Unknown"),
+    construction_epoch = make_epochs(n_nominal_construction_date)
+    )
 
 lep_epc_domestic_tbl %>% glimpse()
+
+tabyl(lep_epc_domestic_tbl, construction_epoch, n_nominal_construction_date)
 
 nom_tbl <- lep_epc_domestic_tbl %>% 
   transmute(nom_list = map(construction_age_band, ~str_extract_all(.x, "\\b\\d{4}\\b") %>%
@@ -311,7 +250,7 @@ epc_final_tbl %>%
             dwellings = sum(dwell_lsoa, na.rm = TRUE))
 
 
-pcd_lu_tbl <- read_csv("data/PCD_OA21_LSOA21_MSOA21_LAD_AUG23_UK_LU.csv")
+pcd_lu_tbl <- read_csv("data/postcode_lookup/PCD_OA21_LSOA21_MSOA21_LAD_AUG23_UK_LU.csv")
 
 lsoa_geogs_tbl <- pcd_lu_tbl %>% 
   filter(ladcd %in% lep_codes) %>% 
@@ -328,12 +267,12 @@ st_crs(lsoa_ons)
 
 
 lep_lsoa <- lsoa_ons %>% 
-  filter(LSOA21CD %in% epc_final_tbl$lsoacd) %>% 
+  filter(LSOA21CD %in% epc_final_tbl$lsoa21) %>% 
   inner_join(lsoa_geogs_tbl, by = join_by(LSOA21CD == lsoacd)) %>% 
   st_write("data/geojson/lep_lsoa_geog.geojson", append = FALSE)
 
 lsoa_ons %>% 
-  inner_join(epc_final_tbl, by = join_by(LSOA21CD == lsoacd)) %>% 
+  inner_join(epc_final_tbl, by = join_by(LSOA21CD == lsoa21)) %>% 
   st_write("data/geojson/lsoa_ons.geojson")
 
 
@@ -342,11 +281,11 @@ lsoa_poly <- st_read("data/geojson/ca_lsoa_poly_wgs84.geojson") %>%
 
 lsoa_out <- lsoa_poly %>% 
   inner_join(epc_final_tbl,
-             by = join_by(lsoacd == lsoacd)) %>% 
+             by = join_by(lsoacd == lsoa21)) %>% 
   st_transform(crs = 4326)
 
 lsoa_out %>% 
-  st_write("data/geojson/lsoa_epc_out.geojson")
+  st_write("data/geojson/lsoa_epc_out.geojson", append = FALSE)
 
 dbListTables(con)
 
@@ -403,14 +342,6 @@ sample_norownames %>%
 
 sample_rownames %>% 
   write_csv("data/sample_rownames.csv", na = "")
-
-
-
-
-
-
-
-
 
 
 dbDisconnect(con, shutdown=TRUE)

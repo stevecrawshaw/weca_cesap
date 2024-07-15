@@ -210,6 +210,57 @@ lep_codes = (ca_la_df
 #%%
 
 #check expected number of certificates
-(wrangled_certs
+lep_epc_dom_df = (wrangled_certs
  .filter(pl.col('local_authority').is_in(lep_codes))
-).shape
+)
+
+#%%
+sample_certs = lep_epc_dom_df.sample(n = 10e3)
+
+#%%
+treated_certs = (
+    sample_certs
+    .with_columns(
+        pl.when(pl.col('tenure').str.contains('wner'))
+        .then(pl.lit('Owner occupied'))
+        .when(pl.col('tenure').str.contains('rivate'))
+        .then(pl.lit('Private rented'))
+        .when(pl.col('tenure').str.contains('ocial'))
+        .then(pl.lit('Social rented'))
+        .otherwise(pl.lit('Unknown'))
+        .alias('tenure_clean')
+        )
+        )
+#%%
+def clean_tenure(expr: pl.Expr, new_colname: str) -> pl.Expr:
+    ''''
+    Function for cleaning the tenure column
+
+    '''
+    return (pl.when(expr.str.contains('wner'))
+    .then(pl.lit('Owner occupied'))
+    .when(expr.str.contains('rivate'))
+    .then(pl.lit('Private rented'))
+    .when(expr.str.contains('ocial'))
+    .then(pl.lit('Social rented'))
+    .otherwise(pl.lit('Unknown'))
+    .alias(new_colname))
+
+#%%
+
+(sample_certs
+ .with_columns(pl.col('construction_age_band').str.extract_all(r'[0-9]').alias('age_int'))
+ .with_columns(pl.col('age_int').list.len().alias('age_int_len'))
+ .select(pl.col(['age_int', 'age_int_len']))
+ )
+
+
+#%%
+
+t_certs = (sample_certs
+           .with_columns(
+               pl.col('tenure').pipe(clean_tenure, 'tenure_clean')
+           )
+)
+
+t_certs.glimpse()
