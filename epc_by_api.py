@@ -1,12 +1,9 @@
 #%%
 import polars as pl
 import get_ca_data as get_ca # functions for retrieving CA \ common data
-from pathlib import Path
 import requests
 import os
 import yaml
-from tqdm import tqdm
-import requests
 
 #%%
 
@@ -171,8 +168,9 @@ def ingest_dom_certs_csv(la_list: list, cols_schema: dict) -> pl.DataFrame:
 all_dom_epc_raw = ingest_dom_certs_csv(la_list, cols_schema_adjusted)
 
 #%%
-all_dom_epc.write_parquet('data/all_domestic_epc.parquet')
+all_dom_epc_raw.write_parquet('data/all_domestic_epc.parquet')
 #%%
+all_dom_epc_raw = pl.read_parquet('data/all_domestic_epc.parquet')
 all_dom_epc_raw.glimpse()
 
 
@@ -214,27 +212,25 @@ lep_epc_dom_df = (wrangled_certs
  .filter(pl.col('local_authority').is_in(lep_codes))
 )
 
+
+#%%
+del wrangled_certs, all_dom_epc_raw
+#%%
+
+lep_epc_dom_df.write_parquet('data/lep_epc_domestic.parquet')
+
+#%%
+lep_epc_dom_df = pl.read_parquet('data/lep_epc_domestic.parquet')
+
 #%%
 sample_certs = lep_epc_dom_df.sample(n = 10e3)
 
 #%%
-treated_certs = (
-    sample_certs
-    .with_columns(
-        pl.when(pl.col('tenure').str.contains('wner'))
-        .then(pl.lit('Owner occupied'))
-        .when(pl.col('tenure').str.contains('rivate'))
-        .then(pl.lit('Private rented'))
-        .when(pl.col('tenure').str.contains('ocial'))
-        .then(pl.lit('Social rented'))
-        .otherwise(pl.lit('Unknown'))
-        .alias('tenure_clean')
-        )
-        )
-#%%
 def clean_tenure(expr: pl.Expr, new_colname: str) -> pl.Expr:
     ''''
     Function for cleaning the tenure column
+    The column is piped into this function
+    In a .with_columns context
 
     '''
     return (pl.when(expr.str.contains('wner'))
@@ -247,20 +243,65 @@ def clean_tenure(expr: pl.Expr, new_colname: str) -> pl.Expr:
     .alias(new_colname))
 
 #%%
+# test df to capture all permutations of the construction age band
+conbands = (sample_certs
+ .select(pl.col('construction_age_band')).unique()
+)
 
-(sample_certs
- .with_columns(pl.col('construction_age_band').str.extract_all(r'[0-9]').alias('age_int'))
- .with_columns(pl.col('age_int').list.len().alias('age_int_len'))
- .select(pl.col(['age_int', 'age_int_len']))
- )
+#%%
+
+
+#%%
+def make_n_construction_age(df: pl.DataFrame, new_colname: str) -> pl.DataFrame:
+    '''
+    Take a dataframe and create a new column with the nominal construction date
+    Creating temporary columns and then dropping them
+    Return the dataframe with the new column
+    '''
+
+    return  (df
+    .with_columns(pl.col('construction_age_band')
+                .str.extract_all(r'[0-9]')
+                .list.join('')
+                .alias('age_char'))
+    .with_columns(pl.col('age_char').str.len_chars().gt(4).alias('_8_chars'))
+    
+    .with_columns(pl.when((pl.col('_8_chars').ne(True)) & (pl.col('age_char') == "1900"))
+                .then(pl.lit(1899))
+                .otherwise(pl.col('age_char').str.slice(0, 4))
+                .alias('lower')
+                .cast(pl.Int16, strict=False)
+                )
+    .with_columns(pl.when(pl.col('_8_chars'))
+                .then(pl.col('age_char').str.slice(4, 8))
+                .otherwise(None)
+                .alias('upper')
+                .cast(pl.Int16, strict=False)
+                )
+    .with_columns(pl.when(pl.col('upper').is_not_null())
+                .then(((pl.col('upper') - pl.col('lower')) // 2) + pl.col('lower'))
+                .when(pl.col('lower').is_nan())
+                .then(None)
+                .otherwise(pl.col('lower'))
+                .alias(new_colname))
+
+    .drop('age_int', '_8_chars', 'age_char', 'lower', 'upper')
+    )
+#%%
+
+test_out = sample_certs.pipe(make_n_construction_age, 'construction_age')
+test_out.glimpse()
+
+ 
 
 
 #%%
 
 t_certs = (sample_certs
            .with_columns(
+               # pipe the pl.col('tenure') expression into the clean_tenure function
                pl.col('tenure').pipe(clean_tenure, 'tenure_clean')
            )
 )
 
-t_certs.glimpse()
+

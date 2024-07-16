@@ -8,6 +8,7 @@ import duckdb
 import json
 import pathlib
 import zipfile
+import pyarrow
 from pyproj import Transformer
 from pathlib import Path
 
@@ -459,9 +460,10 @@ def clean_lsoa_geojson(file_path: str = 'data/geojson/for_rename.geojson',
         success = True
     except Exception as e:
         error_message = str(e)
+        print(error_message)
         success = False
     # construct new file path for saved renamed json  
-    if success:  
+    if success:
         new_stem = f'{pathlib.PurePath(file_path).stem}_{datetime.now().date().isoformat()}'
         new_path = pathlib.PurePath(file_path).with_stem(new_stem)
         out_file = open(new_path, "w")
@@ -522,5 +524,56 @@ def populate_sqlite(dfs_dict: dict, db_path: str = 'data/sqlite/ca_epc.db', over
              engine = 'adbc'
             )
             )
+def clean_tenure(expr: pl.Expr, new_colname: str) -> pl.Expr:
+    ''''
+    Function for cleaning the tenure column
+    The column is piped into this function
+    In a .with_columns context
+
+    '''
+    return (pl.when(expr.str.contains('wner'))
+    .then(pl.lit('Owner occupied'))
+    .when(expr.str.contains('rivate'))
+    .then(pl.lit('Private rented'))
+    .when(expr.str.contains('ocial'))
+    .then(pl.lit('Social rented'))
+    .otherwise(pl.lit('Unknown'))
+    .alias(new_colname))
+
+def make_n_construction_age(df: pl.DataFrame, new_colname: str) -> pl.DataFrame:
+    '''
+    Take a dataframe and create a new column with the nominal construction date
+    Creating temporary columns and then dropping them
+    Return the dataframe with the new column
+    '''
+
+    return  (df
+    .with_columns(pl.col('construction_age_band')
+                .str.extract_all(r'[0-9]')
+                .list.join('')
+                .alias('age_char'))
+    .with_columns(pl.col('age_char').str.len_chars().gt(4).alias('_8_chars'))
+    
+    .with_columns(pl.when((pl.col('_8_chars').ne(True)) & (pl.col('age_char') == "1900"))
+                .then(pl.lit(1899))
+                .otherwise(pl.col('age_char').str.slice(0, 4))
+                .alias('lower')
+                .cast(pl.Int16, strict=False)
+                )
+    .with_columns(pl.when(pl.col('_8_chars'))
+                .then(pl.col('age_char').str.slice(4, 8))
+                .otherwise(None)
+                .alias('upper')
+                .cast(pl.Int16, strict=False)
+                )
+    .with_columns(pl.when(pl.col('upper').is_not_null())
+                .then(((pl.col('upper') - pl.col('lower')) // 2) + pl.col('lower'))
+                .when(pl.col('lower').is_nan())
+                .then(None)
+                .otherwise(pl.col('lower'))
+                .alias(new_colname))
+
+    .drop('age_int', '_8_chars', 'age_char', 'lower', 'upper')
+    )
         
 
