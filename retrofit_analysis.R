@@ -87,6 +87,10 @@ lep_postcodes_tbl <- tbl(con, "postcode_centroids_tbl") %>%
 
 uniqueN(lep_postcodes_tbl$lsoa21) 
 
+epc_domestic_tbl_names <- tbl(con, "epc_domestic_tbl") %>% 
+  colnames()
+
+
 lep_epc_domestic_tbl <- tbl(con, "epc_domestic_tbl") %>%  
   #head(1000) %>% # <------------------------------------------
   filter(local_authority %in% lep_codes) %>% 

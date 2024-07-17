@@ -268,22 +268,11 @@ cols_schema_adjusted = {
 # %%
 epc_domestic = get_ca.ingest_dom_certs_csv(la_list, cols_schema_adjusted)
 epc_domestic.glimpse()
-
-# %%
-# epc_domestic = get_ca.ingest_certs(la_list = la_list,
-#                                    cols_schema = cols_schema_dom,
-#                                    root_dir = 'data/all-domestic-certificates')
-# epc_domestic.glimpse()
-
-
-# %%
-
-
 # %%
 epc_domestic_df = ((get_ca.wrangle_epc(certs_df = epc_domestic)
                    .with_columns(pl.col('tenure')
                                  .pipe(get_ca.clean_tenure, 'tenure_epc')))
-                   .pipe(get_ca.make_n_construction_age, 'n_nominal_construction_age')
+                   .pipe(get_ca.make_n_construction_age, 'n_nominal_construction_date')
                    )
 epc_domestic_df.glimpse()
 
