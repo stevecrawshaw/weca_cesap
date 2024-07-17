@@ -13,6 +13,13 @@ pacman::p_load(tidyverse, # Data wrangling
                santoku
 )
 
+imd_df <- read_csv("data/imd_df.csv")
+
+imd_df %>% 
+  pivot_wider(id_cols = featurecode,
+              names_from = measurement,
+              values_from = value)
+
 
 imd_least_dep <- 32844L
 imd_deciles = seq(1, imd_least_dep, length.out = 11) %>% round()
@@ -99,11 +106,11 @@ lep_epc_domestic_tbl <- tbl(con, "epc_domestic_tbl") %>%
             by = join_by(postcode == postcode)) %>%
   left_join(tbl(con, "ca_tenure_lsoa_tbl") %>% collect(),
             by = join_by(lsoa21 == lsoacd)) %>% 
-  select(lmk_key, # include as otherwise duplicate values occur and these are removed by ODS
+  select(lmk_key,
          local_authority,
          property_type,
          transaction_type,
-         tenure,
+         tenure_epc,
          walls_description,
          roof_description,
          walls_energy_eff,
@@ -114,6 +121,7 @@ lep_epc_domestic_tbl <- tbl(con, "epc_domestic_tbl") %>%
          main_fuel,
          solar_water_heating_flag,
          construction_age_band,
+         n_nominal_construction_date,
          current_energy_rating,
          potential_energy_rating,
          co2_emissions_current,
@@ -145,22 +153,23 @@ lep_epc_domestic_tbl <- tbl(con, "epc_domestic_tbl") %>%
                                             include.lowest = TRUE
     ),
     NA_integer_),
-    n_nominal_construction_date = map_int(construction_age_band, get_mid_age),
+    
+    #n_nominal_construction_date = map_int(construction_age_band, get_mid_age),
     # tenure =   case_when(
     #   str_detect(tenure, "wner-occupied") ~ "Owner occupied",
     #   str_detect(tenure, "social") ~ "Social rented",
     #   str_detect(tenure, "private") ~ "Private rented",
     #   .default = "Unknown"
     # ),
-    tenure = recode_char(tenure,
-                         "owner-occupied" = "Owner occupied",
-                         "Owner-occupied" = "Owner occupied",
-                         "Rented (social)" = "Social rented",
-                         "rental (social)" = "Social rented",
-                         "private" = "Private rented",
-                         "rental (private)" = "Private rented",
-                         "Rented (private)" =  "Private rented",
-                         default = "Unknown"),
+    # tenure = recode_char(tenure,
+    #                      "owner-occupied" = "Owner occupied",
+    #                      "Owner-occupied" = "Owner occupied",
+    #                      "Rented (social)" = "Social rented",
+    #                      "rental (social)" = "Social rented",
+    #                      "private" = "Private rented",
+    #                      "rental (private)" = "Private rented",
+    #                      "Rented (private)" =  "Private rented",
+    #                      default = "Unknown"),
     construction_epoch = make_epochs(n_nominal_construction_date)
     )
 

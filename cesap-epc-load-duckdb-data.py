@@ -85,7 +85,51 @@ ca_lsoa_poly_path = get_ca.filter_geojson(input_file = cleaned_lsoa_poly_path,
 reproject_lsoa_poly_path = get_ca.reproject(ca_lsoa_poly_path, output_wgs84_file='data/geojson/ca_lsoa_poly_wgs84.geojson', lsoa_code = 'lsoacd')
 
 # %% [markdown]
-# CSV no longer works so json is the way
+# CSV 
+#https://opendatacommunities.org/resource?uri=http%3A%2F%2Fopendatacommunities.org%2Fdata%2Fsocietal-wellbeing%2Fimd2019%2Findices
+#%%
+imd_df_lazy = pl.scan_csv('data/imd2019lsoa.csv',
+                     infer_schema_length=0)
+#%%
+metrics = pl.Series('metrics', ['Rank', 'Decile '])
+#%%
+imd_df = (
+    imd_df_lazy
+    .rename(lambda col: col.replace(' ', '_').lower())
+    .filter(pl.col('indices_of_deprivation').is_in(['a. Index of Multiple Deprivation (IMD)']))
+    .filter(pl.col('measurement').is_in(metrics))
+    .select(pl.col(['featurecode', 'measurement', 'value']))
+    .with_columns(pl.col('value').cast(pl.Int64).alias('value'))
+    
+).collect()
+# .pivot('measurement', 'featurecode',
+# 'value', aggregate_function='sum')
+# imd_df.glimpse()
+
+#%%
+
+(imd_df
+ .pivot(values='value', index='featurecode', columns='measurement')
+ .rename({'featurecode': 'lsoacd',
+          'Rank': 'imd_rank',
+          'Decile ': 'imd_decile'})
+        )
+
+
+#%%
+df = pl.DataFrame(
+    {
+        "name": ["Cady", "Cady", "Karen", "Karen"],
+        "subject": ["maths", "physics", "maths", "physics"],
+        "test_1": [98, 99, 61, 58],
+        "test_2": [100, 100, 60, 60],
+    }
+)
+
+#%%
+df.pivot("subject", index="name", values="test_1")
+
+
 
 # %%
 url_imd_json = "https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/Index_of_Multiple_Deprivation_Dec_2019_Lookup_in_England_2022/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=json"
