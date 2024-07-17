@@ -8,7 +8,6 @@ import duckdb
 import json
 import pathlib
 import zipfile
-import pyarrow
 from pyproj import Transformer
 from pathlib import Path
 import yaml
@@ -95,9 +94,7 @@ def get_ca_la_df(year: int,
             raise Exception(f'API call failed {r.status_code}')
     except AssertionError:
         print(f'API call failed {r.status_code}')
-    except:
-        print(r.status_code)
-
+    
     else:
         response = r.json()
         attrs = response.get('features')
@@ -126,7 +123,7 @@ def get_ca_la_df(year: int,
 def get_rename_dict(df: pl.DataFrame, remove_numbers, rm_numbers = False) -> dict:
     old = df.columns
     counts = {}
-    if rm_numbers == False:
+    if not rm_numbers:
         new = [colstring.lower() for colstring in df.columns]
     else:
         new = [remove_numbers(colstring).lower() for colstring in df.columns]
@@ -385,7 +382,7 @@ def ingest_dom_certs_csv(la_list: list, cols_schema: dict) -> pl.DataFrame:
     certs_df = pl.concat(pl.collect_all(all_lazyframes))   # faster than intermediate step             
     return certs_df
 
-def get_epc_csv(la: str, epc_key: str):
+def get_epc_csv(la: str):
     '''
     Uses the opendatacommunities API to get EPC data for a given local authority and writes it to a CSV file
     the epc auth_token is in the config.yml file in parent directory
@@ -416,7 +413,7 @@ def get_epc_csv(la: str, epc_key: str):
 
     with open(output_file, 'w') as file:
         # Perform at least one request; if there's no search_after, there are no further results
-        while search_after != None or first_request:
+        while search_after is not None or first_request:
             # Only set search-after if this isn't the first request
             if not first_request:
                 query_params["search-after"] = search_after
@@ -487,9 +484,9 @@ def load_data(command_list: list, db_path: str = 'data/ca_epc.duckdb', overwrite
     for command in command_list:
         try:
             con.execute(command)
-        except:
+        except duckdb.DatabaseError as e:
             success = False
-            print(f'{command} failed')
+            print(f'{command} failed {e}')
     con.close()
     return db_path if success else success
 
@@ -581,4 +578,44 @@ def make_n_construction_age(df: pl.DataFrame, new_colname: str) -> pl.DataFrame:
     .drop('age_int', '_8_chars', 'age_char', 'lower', 'upper')
     )
         
+def get_imd_df(path: str = 'data/IMD2019.csv') -> pl.DataFrame:
+    '''
+    Read the IMD CSV file and return a polars dataframe
+    with the IMD rank and decile for all LSOA's in UK
+    Pivot the data to get the rank and decile as columns
+    '''
+    
+    url = '''
+    https://opendatacommunities.org/resource?uri=http%3A%2F%2Fopendatacommunities.org%2Fdata%2Fsocietal-wellbeing%2Fimd2019%2Findices
+    '''
+    try:
+        file_path = Path(path)
 
+    # Check if the file exists
+        if file_path.exists():
+            imd_df_lazy = pl.scan_csv(file_path,
+                        infer_schema_length=0)
+            metrics = pl.Series('metrics', ['Rank', 'Decile ']) # with a space :|
+
+        return ((
+            imd_df_lazy
+            .rename(lambda col: col.replace(' ', '_').lower())
+            .filter(pl.col('indices_of_deprivation').is_in(['a. Index of Multiple Deprivation (IMD)']))
+            .filter(pl.col('measurement').is_in(metrics))
+            .select(pl.col(['featurecode', 'measurement', 'value']))
+            .with_columns(pl.col('value').cast(pl.Int64).alias('value'))
+            
+        ).collect()
+        .pivot(values='value', index='featurecode', columns='measurement')
+        .rename({'featurecode': 'lsoacd',
+                'Rank': 'imd_rank',
+                'Decile ': 'imd_decile'})
+        )
+
+    # Print result or URL if the file does not exist
+    except FileNotFoundError as e:
+        print(e)
+        print("You can download the file from the following URL:")
+        url = "https://opendatacommunities.org/resource?uri=http%3A%2F%2Fopendatacommunities.org%2Fdata%2Fsocietal-wellbeing%2Fimd2019%2Findices"
+        print(url)
+        return None

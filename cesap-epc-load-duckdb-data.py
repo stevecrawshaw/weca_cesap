@@ -3,8 +3,8 @@
 import polars as pl
 import duckdb
 import get_ca_data as get_ca # functions for retrieving CA \ common data
-from pathlib import Path
-import requests
+download_epc = False
+
 
 
 # %% [markdown]
@@ -12,7 +12,7 @@ import requests
 # SQLite was tried, but it is slow, not directly compatible with polars and does not work well with datasette because of the size of data.
 
 # %%
-ca_la_df = get_ca.get_ca_la_df(2023, inc_ns=True) # include NS
+ca_la_df = get_ca.get_ca_la_df(2023, inc_ns = True) # include NS
 # ca_la_df.glimpse()
 
 
@@ -82,82 +82,11 @@ ca_lsoa_poly_path = get_ca.filter_geojson(input_file = cleaned_lsoa_poly_path,
                                          ca_lsoa_codes = ca_lsoa_codes)
 
 # %%
-reproject_lsoa_poly_path = get_ca.reproject(ca_lsoa_poly_path, output_wgs84_file='data/geojson/ca_lsoa_poly_wgs84.geojson', lsoa_code = 'lsoacd')
-
-# %% [markdown]
-# CSV 
-#https://opendatacommunities.org/resource?uri=http%3A%2F%2Fopendatacommunities.org%2Fdata%2Fsocietal-wellbeing%2Fimd2019%2Findices
+reproject_lsoa_poly_path = get_ca.reproject(ca_lsoa_poly_path,
+                                             output_wgs84_file='data/geojson/ca_lsoa_poly_wgs84.geojson',
+                                             lsoa_code = 'lsoacd')
 #%%
-imd_df_lazy = pl.scan_csv('data/imd2019lsoa.csv',
-                     infer_schema_length=0)
-#%%
-metrics = pl.Series('metrics', ['Rank', 'Decile '])
-#%%
-imd_df = (
-    imd_df_lazy
-    .rename(lambda col: col.replace(' ', '_').lower())
-    .filter(pl.col('indices_of_deprivation').is_in(['a. Index of Multiple Deprivation (IMD)']))
-    .filter(pl.col('measurement').is_in(metrics))
-    .select(pl.col(['featurecode', 'measurement', 'value']))
-    .with_columns(pl.col('value').cast(pl.Int64).alias('value'))
-    
-).collect()
-# .pivot('measurement', 'featurecode',
-# 'value', aggregate_function='sum')
-# imd_df.glimpse()
-
-#%%
-
-(imd_df
- .pivot(values='value', index='featurecode', columns='measurement')
- .rename({'featurecode': 'lsoacd',
-          'Rank': 'imd_rank',
-          'Decile ': 'imd_decile'})
-        )
-
-
-#%%
-df = pl.DataFrame(
-    {
-        "name": ["Cady", "Cady", "Karen", "Karen"],
-        "subject": ["maths", "physics", "maths", "physics"],
-        "test_1": [98, 99, 61, 58],
-        "test_2": [100, 100, 60, 60],
-    }
-)
-
-#%%
-df.pivot("subject", index="name", values="test_1")
-
-
-
-# %%
-url_imd_json = "https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/Index_of_Multiple_Deprivation_Dec_2019_Lookup_in_England_2022/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=json"
-
-# %%
-imd_json = requests.get(url_imd_json)
-
-# %%
-features = imd_json.json()['features']
-
-# %%
-imd_df_raw = pl.DataFrame(features).unnest(columns = 'attributes')
-
-# %%
-rename_dict_imd = get_ca.get_rename_dict(imd_df_raw, get_ca.remove_numbers, rm_numbers = True)
-
-# %%
-imd_df = (
-    imd_df_raw
-    .rename(rename_dict_imd)
-    .select(pl.all().exclude('fid'))
-    .filter(pl.col('lsoacd').is_in(ca_lsoa_codes))
-)
-n_unmatched_lsoas = len(ca_lsoa_codes) - imd_df.shape[0]
-
-# %%
-del imd_df_raw, imd_json
-
+imd_df = get_ca.get_imd_df(path = 'data/imd2019lsoa.csv')
 # %%
 # https://geoportal.statistics.gov.uk/datasets/lsoa-dec-2021-pwc-for-england-and-wales/explore
 
@@ -193,60 +122,6 @@ epc_non_domestic = (pl.scan_csv(
                     .sort(pl.col(['UPRN', 'LODGEMENT_DATETIME']))
                     .group_by('UPRN').last()
 ).collect()
-
-# %%
-cols_schema_dom = {
-                        'LMK_KEY':pl.Utf8,
-                        'POSTCODE':pl.Utf8,
-                        'LOCAL_AUTHORITY':pl.Utf8,
-                        'PROPERTY_TYPE':pl.Utf8,
-                        'LODGEMENT_DATETIME':pl.Utf8,
-                        'TRANSACTION_TYPE': pl.Utf8,
-                        'TENURE':pl.Utf8,
-                        'MAINS_GAS_FLAG':pl.Utf8,
-                        'HOT_WATER_ENERGY_EFF':pl.Utf8,
-                        'WINDOWS_DESCRIPTION':pl.Utf8,
-                        'WINDOWS_ENERGY_EFF':pl.Utf8,
-                        'WALLS_DESCRIPTION':pl.Utf8,
-                        'WALLS_ENERGY_EFF':pl.Utf8,
-                        'ROOF_DESCRIPTION':pl.Utf8,
-                        'ROOF_ENERGY_EFF':pl.Utf8,
-                        'MAINHEAT_DESCRIPTION':pl.Utf8,
-                        'MAINHEAT_ENERGY_EFF':pl.Utf8,
-                        'MAINHEAT_ENV_EFF':pl.Utf8,
-                        'MAIN_HEATING_CONTROLS':pl.Utf8,
-                        'MAINHEATCONT_DESCRIPTION':pl.Utf8,
-                        'MAINHEATC_ENERGY_EFF':pl.Utf8,
-                        'MAIN_FUEL':pl.Utf8,
-                        'SOLAR_WATER_HEATING_FLAG':pl.Utf8,
-                        'CONSTRUCTION_AGE_BAND':pl.Utf8,
-                        'CURRENT_ENERGY_RATING':pl.Utf8,
-                        'POTENTIAL_ENERGY_RATING':pl.Utf8,
-                        'CURRENT_ENERGY_EFFICIENCY':pl.Utf8,
-                        'POTENTIAL_ENERGY_EFFICIENCY':pl.Utf8,
-                        'BUILT_FORM':pl.Utf8,
-                        'CONSTITUENCY':pl.Utf8,
-                        'FLOOR_DESCRIPTION':pl.Utf8,
-                        'ENVIRONMENT_IMPACT_CURRENT':pl.Int64,
-                        'ENVIRONMENT_IMPACT_POTENTIAL':pl.Int64,
-                        'ENERGY_CONSUMPTION_CURRENT':pl.Int64,
-                        'ENERGY_CONSUMPTION_POTENTIAL':pl.Int64,
-                        'CO2_EMISS_CURR_PER_FLOOR_AREA':pl.Int64,
-                        'CO2_EMISSIONS_CURRENT': pl.Float64,
-                        'CO2_EMISSIONS_POTENTIAL':pl.Float64,
-                        'LIGHTING_COST_CURRENT':pl.Int64,
-                        'LIGHTING_COST_POTENTIAL':pl.Int64,
-                        'HEATING_COST_CURRENT':pl.Int64,
-                        'HEATING_COST_POTENTIAL':pl.Int64,
-                        'HOT_WATER_COST_CURRENT':pl.Int64,
-                        'HOT_WATER_COST_POTENTIAL':pl.Int64,
-                        'TOTAL_FLOOR_AREA':pl.Float64,
-                        'NUMBER_HABITABLE_ROOMS':pl.Int64,
-                        'NUMBER_HEATED_ROOMS':pl.Int64,
-                        'PHOTO_SUPPLY':pl.Float64,
-                        'UPRN':pl.Int64,
-                        'BUILDING_REFERENCE_NUMBER':pl.Int64
-                    }
 
 # %%
 # cols_schema_adjusted this schema is for the csv files retrieved using the epc API
@@ -305,9 +180,12 @@ cols_schema_adjusted = {
 # %%
 # Only run this if you are updating the EPC data from the opendatacommunities API
 # THIS WILL TAKE AT LEAST 2 HOURS TO RUN!!!
-# get_ca.delete_all_csv_files('data/epc_csv')
-# epc_key = yaml.safe_load(open('../config.yml'))['epc']['auth_token']
-# [get_ca.get_epc_csv(la, epc_key) for la in la_list]
+if not download_epc:
+    print('Not downloading EPC data')
+else:
+    get_ca.delete_all_csv_files('data/epc_csv')
+    [get_ca.get_epc_csv(la) for la in la_list]
+    
 
 # %%
 epc_domestic = get_ca.ingest_dom_certs_csv(la_list, cols_schema_adjusted)
