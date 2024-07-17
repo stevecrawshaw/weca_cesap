@@ -11,6 +11,7 @@ import zipfile
 import pyarrow
 from pyproj import Transformer
 from pathlib import Path
+import yaml
 
 """
 Functions to get geographies and EPC data for combined authorities
@@ -57,7 +58,8 @@ def wrangle_epc(certs_df: pl.DataFrame) -> pl.DataFrame:
                    pl.col('date').cast(pl.Utf8)])
     # .rename(certs_df_names)
     .filter(~pl.col('uprn').is_duplicated()) # some nulls and duplicates (~134) so remove
-    .drop('lodgement_datetime'))
+    .drop('lodgement_datetime')
+    )
     return wrangled_df
 
 def get_ca_la_df(year: int,
@@ -389,6 +391,8 @@ def get_epc_csv(la: str, epc_key: str):
     the epc auth_token is in the config.yml file in parent directory
     This function uses pagination cribbed from https://epc.opendatacommunities.org/docs/api/domestic#domestic-pagination
     '''
+    # Load the EPC auth token from the config file
+    epc_key = yaml.safe_load(open('../config.yml'))['epc']['auth_token']
     # Page size (max 5000)
     query_size = 5000
     # Output file name
