@@ -549,6 +549,7 @@ def make_n_construction_age(df: pl.DataFrame, new_colname: str) -> pl.DataFrame:
     Take a dataframe and create a new column with the nominal construction date
     Creating temporary columns and then dropping them
     Return the dataframe with the new column
+    Done in polars for speed
     '''
 
     return  (df
