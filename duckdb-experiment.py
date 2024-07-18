@@ -2,6 +2,8 @@
 import polars as pl
 import duckdb
 
+#%% [markdown]
+# # Testing how to create a view which can export the dataset for lep-epc-domestic-point
 #%%
 
 con = duckdb.connect('data/ca_epc.duckdb')
@@ -9,9 +11,13 @@ con = duckdb.connect('data/ca_epc.duckdb')
 #%%
 
 con.sql("SHOW ALL TABLES;")
+#%%
 
 # %%
 con.sql('DESCRIBE epc_domestic_tbl')
+
+#%%
+con.sql('FROM epc_domestic_tbl LIMIT 5').pl().glimpse()
 #%%
 con.sql('DESCRIBE postcode_centroids_tbl')
 
@@ -41,9 +47,11 @@ con.sql('''
 
 con.sql('DESCRIBE postcode_centroids_tbl')
 # %%
-epc_lep = con.sql(
-    '''
-        SELECT lmk_key,
+create_view_qry = '''
+CREATE OR REPLACE VIEW epc_lep_domestic_ods_vw AS
+
+SELECT   ROW_NUMBER() OVER (ORDER BY lmk_key) AS rowname,
+         lmk_key,
          local_authority,
          property_type,
          transaction_type,
@@ -81,6 +89,7 @@ epc_lep = con.sql(
          date,
          year,
          month,
+         imd_decile as n_imd_decile,
          n_nominal_construction_date,
          CASE WHEN n_nominal_construction_date < 1900 THEN 'Before 1900'
          WHEN (n_nominal_construction_date >= 1900) AND (n_nominal_construction_date <= 1930) THEN '1900 - 1930'
@@ -96,15 +105,30 @@ epc_lep = con.sql(
         LEFT JOIN ca_la_tbl 
         ON ca_la_tbl.ladcd = epc_domestic_tbl.local_authority
 
+        LEFT JOIN imd_tbl
+        ON ca_tenure_lsoa_tbl.lsoacd = imd_tbl.lsoacd
+
         WHERE local_authority IN 
         (SELECT ladcd
         FROM ca_la_tbl
         WHERE cauthnm = \'West of England\')
-        '''
-        ).pl()
+'''
+#%%
+# SQL for a non materialised view of EPC data
+con.execute(create_view_qry)
 
-# %%
+#%%
+con.sql('FROM epc_lep_domestic_ods_vw LIMIT 10').pl().glimpse()
+#%%
 con.sql('SELECT COUNT(*) num_rows FROM lsoa_pwc_tbl')
+#%%
+#check
+ods_url = "https://opendata.westofengland-ca.gov.uk/api/explore/v2.1/catalog/datasets/lep-epc-domestic-point/exports/csv?limit=10&timezone=UTC&use_labels=false&epsg=4326"
+
+#%%
+
+pl.read_csv(ods_url, separator=";").glimpse()
 
 # %%
 con.close()
+# %%

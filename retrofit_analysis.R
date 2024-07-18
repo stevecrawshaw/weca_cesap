@@ -13,64 +13,21 @@ pacman::p_load(tidyverse, # Data wrangling
                santoku
 )
 
-imd_df <- read_csv("data/imd_df.csv")
-
-imd_df %>% 
-  pivot_wider(id_cols = featurecode,
-              names_from = measurement,
-              values_from = value)
 
 
-imd_least_dep <- 32844L
-imd_deciles = seq(1, imd_least_dep, length.out = 11) %>% round()
 
 con <- DBI::dbConnect(duckdb(), dbdir = "data/ca_epc.duckdb")
 
-make_epochs <- function(year_integer, breaks = c(1799, 1900, 1930, 2024),
-                        labels = c("Pre 1900", "1900 - 1930", "1930 - Present")){
-  # use santoku::chop to create bands of construction ages
-  year_integer %>% 
-    map(~chop(.x,
-              breaks,
-              labels)) %>%
-    unlist()
-}
+# the EPC data is now within a view in the duckdb database
+# calculations for construction epoch and the joins with other tables 
+# are much faster than doing it in R
+# The cleaning process are done in Polars and are much more performant than R
 
-get_mid_age <- function(construction_age_band){
-  int_vec <- str_extract_all(construction_age_band, "\\b\\d{4}\\b") %>%
-    # unlist() %>%
-    pluck(1) %>% 
-    as.integer()
+lep_epc_domestic_point_ods_tbl <- tbl(con, "epc_lep_domestic_ods_vw") %>% 
+  collect()
 
-  out = case_when(
-    is.na(int_vec) ~ NA_integer_,
-    length(int_vec) == 1 & int_vec == 1900L ~ 1899L,
-    length(int_vec) == 1 ~ int_vec,
-    length(int_vec) == 2 ~ mean(int_vec) %>% round(0),
-    .default = NA_integer_,
-    .ptype = integer()
-  )
-  out[1]
-}
-
-test_cab <- sample(lep_epc_domestic_tbl$construction_age_band, size = 100)
-# 
-# test_cab <- "Before 1900"
-map(test_cab, get_mid_age) #%>%
-#   map(~mean(.x, na.rm = TRUE))
-
-
-#map_int(lep_epc_domestic_tbl$construction_age_band[1:20], get_mid_age) #%>% length()
-
-# 
-# ren_func <- function(x){
-#   if(str_starts(x, "d_")){
-#     y = paste(str_remove(x, "_d"), "_percent")
-#   } else {
-#     y = x
-#   }
-#   return(y)
-# }
+lep_epc_domestic_point_ods_tbl %>% 
+  write_csv("data/lep_epc_domestic_point_ods_tbl.csv", na = "")
 
 # Create a function to remove attributes
 remove_attributes <- function(x) {
@@ -80,104 +37,11 @@ remove_attributes <- function(x) {
 
 dbListTables(con)
 
-lep_la_tbl <- tbl(con, "ca_la_tbl") %>% 
-  filter(cauthnm == "West of England") %>% 
-  collect() 
+tabyl(lep_epc_domestic_point_ods_tbl,
+      construction_epoch,
+      n_nominal_construction_date)
 
-lep_codes <- lep_la_tbl  %>% 
-  pull(ladcd)
-
-lep_postcodes_tbl <- tbl(con, "postcode_centroids_tbl") %>% 
-  filter(laua %in% lep_codes) %>%
-  select(postcode = pcds, ladcd = laua, lsoa21, lsoa11, msoa11, msoa21, imd, lat, long, x, y) %>%
-  collect()
-
-uniqueN(lep_postcodes_tbl$lsoa21) 
-
-epc_domestic_tbl_names <- tbl(con, "epc_domestic_tbl") %>% 
-  colnames()
-
-
-lep_epc_domestic_tbl <- tbl(con, "epc_domestic_tbl") %>%  
-  #head(1000) %>% # <------------------------------------------
-  filter(local_authority %in% lep_codes) %>% 
-  collect() %>% 
-  left_join(lep_postcodes_tbl, 
-            by = join_by(postcode == postcode)) %>%
-  left_join(tbl(con, "ca_tenure_lsoa_tbl") %>% collect(),
-            by = join_by(lsoa21 == lsoacd)) %>% 
-  select(lmk_key,
-         local_authority,
-         property_type,
-         transaction_type,
-         tenure_epc,
-         walls_description,
-         roof_description,
-         walls_energy_eff,
-         roof_energy_eff,
-         mainheat_description,
-         mainheat_energy_eff,
-         mainheat_env_eff,
-         main_fuel,
-         solar_water_heating_flag,
-         construction_age_band,
-         n_nominal_construction_date,
-         current_energy_rating,
-         potential_energy_rating,
-         co2_emissions_current,
-         co2_emissions_potential,
-         co2_emiss_curr_per_floor_area,
-         number_habitable_rooms,
-         number_heated_rooms,
-         photo_supply,
-         total_floor_area,
-         building_reference_number,
-         built_form,
-         lsoa21,
-         msoa21,
-         lat,
-         long,
-         imd,
-         total,
-         owned,
-         social_rented,
-         private_rented,
-         date,
-         year,
-         month
-         ) %>% 
-  mutate(         # imd decile 1= most deprived
-    n_imd_decile = if_else(!is.na(imd), cut(imd,
-                                            breaks = imd_deciles,
-                                            labels = FALSE,
-                                            include.lowest = TRUE
-    ),
-    NA_integer_),
-    
-    #n_nominal_construction_date = map_int(construction_age_band, get_mid_age),
-    # tenure =   case_when(
-    #   str_detect(tenure, "wner-occupied") ~ "Owner occupied",
-    #   str_detect(tenure, "social") ~ "Social rented",
-    #   str_detect(tenure, "private") ~ "Private rented",
-    #   .default = "Unknown"
-    # ),
-    # tenure = recode_char(tenure,
-    #                      "owner-occupied" = "Owner occupied",
-    #                      "Owner-occupied" = "Owner occupied",
-    #                      "Rented (social)" = "Social rented",
-    #                      "rental (social)" = "Social rented",
-    #                      "private" = "Private rented",
-    #                      "rental (private)" = "Private rented",
-    #                      "Rented (private)" =  "Private rented",
-    #                      default = "Unknown"),
-    construction_epoch = make_epochs(n_nominal_construction_date)
-    )
-
-lep_epc_domestic_tbl %>% glimpse()
-
-tabyl(lep_epc_domestic_tbl, construction_epoch, n_nominal_construction_date)
-
-nom_tbl <- lep_epc_domestic_tbl %>% 
+nom_tbl <- lep_epc_domestic_point_ods_tbl %>% 
   transmute(nom_list = map(construction_age_band, ~str_extract_all(.x, "\\b\\d{4}\\b") %>%
            # unlist() %>%
            pluck(1) %>% 
@@ -194,7 +58,7 @@ enframe()
 
 
 
-epc_source_1 <- lep_epc_domestic_tbl %>% 
+epc_source_1 <- lep_epc_domestic_point_ods_tbl %>% 
   mutate(d_roof_good = if_else(str_detect(roof_energy_eff, "Good"), 1, 0),
          d_roof_poor = if_else(str_detect(roof_energy_eff, "Poor"), 1, 0),
          d_walls_good = if_else(str_detect(walls_energy_eff, "Good"), 1, 0),
@@ -336,8 +200,7 @@ lep_epc_domestic_point_ods_tbl %>%
 
 # ODS output for the pojnt data
 
-lep_epc_domestic_point_ods_tbl %>% 
-  write_csv("data/lep_epc_domestic_point_ods_tbl.csv", na = "")
+
 
 
 # records disappearing demo data

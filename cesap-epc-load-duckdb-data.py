@@ -4,8 +4,7 @@ import polars as pl
 import duckdb
 import get_ca_data as get_ca # functions for retrieving CA \ common data
 download_epc = False
-
-
+download_lsoa = False
 
 # %% [markdown]
 # This notebook retrieves all the base data needed for comparison analysis with other Combined Authorities and loads it into a duckdb database.
@@ -48,43 +47,35 @@ ca_lsoa_codes = get_ca.get_ca_lsoa_codes(postcodes_df)
 # run cell below if not needing to update LSOA geodata (its expensive and crashes)
 
 # %%
-reproject_path = 'data/geojson/ca_lsoa_pwc_wgs84.geojson'
-reproject_lsoa_poly_path = 'data/geojson/ca_lsoa_poly_wgs84.geojson'
+if not download_lsoa:
+    reproject_path = 'data/geojson/ca_lsoa_pwc_wgs84.geojson'
+    reproject_lsoa_poly_path = 'data/geojson/ca_lsoa_poly_wgs84.geojson'
 
 # %%
 # rename the LSOA features and return the path
-cleaned_lsoa_pwc_path = get_ca.clean_lsoa_geojson('data/LLSOA_Dec_2021_PWC_for_England_and_Wales_2022_-7534040603619445107.geojson',
-                                                  lsoacd='LSOA21CD')
+if download_lsoa:
+    cleaned_lsoa_pwc_path = get_ca.clean_lsoa_geojson('data/LLSOA_Dec_2021_PWC_for_England_and_Wales_2022_-7534040603619445107.geojson',
+                                                    lsoacd='LSOA21CD')
+    # filter for just the LSOA's in Combined Authorities
+    ca_lsoa_pwc_path = get_ca.filter_geojson(input_file = cleaned_lsoa_pwc_path,
+                                            output_file='data/geojson/ca_lsoa_pwc.geojson',
+                                            property_name ='lsoacd',
+                                            ca_lsoa_codes = ca_lsoa_codes)
 
-# %%
+    cleaned_lsoa_poly_path = get_ca.clean_lsoa_geojson('data/geojson/Lower_layer_Super_Output_Areas_December_2021_Boundaries_EW_BFE_V10_1289561450475266465.geojson',
+                                                    lsoacd='LSOA21CD')
+    # reproject to WGS84:4326 as default from ONS is 27700
+    reproject_path = get_ca.reproject(ca_lsoa_pwc_path, output_wgs84_file='data/geojson/ca_lsoa_pwc_wgs84.geojson', lsoa_code = 'lsoacd')
 
+    # filter for just the LSOA's polys in Combined Authorities
+    ca_lsoa_poly_path = get_ca.filter_geojson(input_file = cleaned_lsoa_poly_path,
+                                            output_file='data/geojson/ca_lsoa_poly.geojson',
+                                            property_name ='lsoacd',
+                                            ca_lsoa_codes = ca_lsoa_codes)
 
-# %%
-# filter for just the LSOA's in Combined Authorities
-ca_lsoa_pwc_path = get_ca.filter_geojson(input_file = cleaned_lsoa_pwc_path,
-                                         output_file='data/geojson/ca_lsoa_pwc.geojson',
-                                         property_name ='lsoacd',
-                                         ca_lsoa_codes = ca_lsoa_codes)
-
-# %%
-cleaned_lsoa_poly_path = get_ca.clean_lsoa_geojson('data/geojson/Lower_layer_Super_Output_Areas_December_2021_Boundaries_EW_BFE_V10_1289561450475266465.geojson',
-                                                   lsoacd='LSOA21CD')
-
-# %%
-# reproject to WGS84:4326 as default from ONS is 27700
-reproject_path = get_ca.reproject(ca_lsoa_pwc_path, output_wgs84_file='data/geojson/ca_lsoa_pwc_wgs84.geojson', lsoa_code = 'lsoacd')
-
-# %%
-# filter for just the LSOA's polys in Combined Authorities
-ca_lsoa_poly_path = get_ca.filter_geojson(input_file = cleaned_lsoa_poly_path,
-                                         output_file='data/geojson/ca_lsoa_poly.geojson',
-                                         property_name ='lsoacd',
-                                         ca_lsoa_codes = ca_lsoa_codes)
-
-# %%
-reproject_lsoa_poly_path = get_ca.reproject(ca_lsoa_poly_path,
-                                             output_wgs84_file='data/geojson/ca_lsoa_poly_wgs84.geojson',
-                                             lsoa_code = 'lsoacd')
+    reproject_lsoa_poly_path = get_ca.reproject(ca_lsoa_poly_path,
+                                                output_wgs84_file='data/geojson/ca_lsoa_poly_wgs84.geojson',
+                                                lsoa_code = 'lsoacd')
 #%%
 imd_df = get_ca.get_imd_df(path = 'data/imd2019lsoa.csv')
 # %%
@@ -185,8 +176,6 @@ if not download_epc:
 else:
     get_ca.delete_all_csv_files('data/epc_csv')
     [get_ca.get_epc_csv(la) for la in la_list]
-    
-
 # %%
 epc_domestic = get_ca.ingest_dom_certs_csv(la_list, cols_schema_adjusted)
 epc_domestic.glimpse()
@@ -285,11 +274,79 @@ except Exception as e:
 
 # %%
 del epc_non_domestic_df, pc_centroids_df
+#%%
+# the query to create the view for epc_lep_domestic_ods_vw
+create_view_qry = '''
+CREATE OR REPLACE VIEW epc_lep_domestic_ods_vw AS
 
+SELECT   ROW_NUMBER() OVER (ORDER BY lmk_key) AS rowname,
+         lmk_key,
+         local_authority,
+         property_type,
+         transaction_type,
+         tenure_epc as tenure,
+         walls_description,
+         roof_description,
+         walls_energy_eff,
+         roof_energy_eff,
+         mainheat_description,
+         mainheat_energy_eff,
+         mainheat_env_eff,
+         main_fuel,
+         solar_water_heating_flag,
+         construction_age_band,
+         current_energy_rating,
+         potential_energy_rating,
+         co2_emissions_current,
+         co2_emissions_potential,
+         co2_emiss_curr_per_floor_area,
+         number_habitable_rooms,
+         number_heated_rooms,
+         photo_supply,
+         total_floor_area,
+         building_reference_number,
+         built_form,
+         lsoa21,
+         msoa21,
+         lat,
+         long,
+         imd,
+         total,
+         owned,
+         social_rented,
+         private_rented,
+         date,
+         year,
+         month,
+         imd_decile as n_imd_decile,
+         n_nominal_construction_date,
+         CASE WHEN n_nominal_construction_date < 1900 THEN 'Before 1900'
+         WHEN (n_nominal_construction_date >= 1900) AND (n_nominal_construction_date <= 1930) THEN '1900 - 1930'
+         WHEN n_nominal_construction_date > 1930 THEN '1930 to present'
+         ELSE 'Unknown' END AS construction_epoch,
+         ca_la_tbl.ladnm as ladnm,
+        FROM epc_domestic_tbl
+
+        LEFT JOIN postcode_centroids_tbl ON epc_domestic_tbl.postcode = postcode_centroids_tbl.pcds
+
+        LEFT JOIN ca_tenure_lsoa_tbl ON postcode_centroids_tbl.lsoa21 = ca_tenure_lsoa_tbl.lsoacd
+
+        LEFT JOIN ca_la_tbl 
+        ON ca_la_tbl.ladcd = epc_domestic_tbl.local_authority
+
+        LEFT JOIN imd_tbl
+        ON ca_tenure_lsoa_tbl.lsoacd = imd_tbl.lsoacd
+
+        WHERE local_authority IN 
+        (SELECT ladcd
+        FROM ca_la_tbl
+        WHERE cauthnm = \'West of England\')
+'''
 # %%
 con.execute('CREATE OR REPLACE TABLE epc_domestic_tbl AS SELECT * FROM epc_domestic_df')
 con.execute('CREATE UNIQUE INDEX uprn_idx ON epc_domestic_tbl (uprn)')
-
+# make the domestic epc view for export to ODS
+con.execute(create_view_qry)
 # %%
 del epc_domestic_df, ca_tenure_lsoa
 
