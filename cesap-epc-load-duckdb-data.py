@@ -276,7 +276,7 @@ except Exception as e:
 del epc_non_domestic_df, pc_centroids_df
 #%%
 # the query to create the view for epc_lep_domestic_ods_vw
-create_view_qry = '''
+create_epc_domestic_view_qry = '''
 CREATE OR REPLACE VIEW epc_lep_domestic_ods_vw AS
 
 SELECT   ROW_NUMBER() OVER (ORDER BY lmk_key) AS rowname,
@@ -342,13 +342,40 @@ SELECT   ROW_NUMBER() OVER (ORDER BY lmk_key) AS rowname,
         FROM ca_la_tbl
         WHERE cauthnm = \'West of England\')
 '''
+
+#%%
+create_epc_non_domestic_view_qry = """
+ CREATE OR REPLACE VIEW epc_non_domestic_ods_vw AS
+        SELECT
+                epc_non_domestic_tbl.* EXCLUDE postcode,
+                ca_la_tbl.*,
+                p.lsoa21,
+                p.lat,
+                p.long
+        FROM epc_non_domestic_tbl
+
+INNER JOIN
+        ca_la_tbl 
+        ON epc_non_domestic_tbl.local_authority = ca_la_tbl.ladcd
+INNER JOIN 
+        
+        (SELECT pcds, lsoa21, lat, long 
+        FROM postcode_centroids_tbl) as p
+        ON epc_non_domestic_tbl.postcode = p.pcds
+WHERE ca_la_tbl.ladnm 
+        IN ('Bristol, City of',
+        'Bath and North East Somerset',
+        'North Somerset',
+        'South Gloucestershire');
+"""
 # %%
 con.execute('CREATE OR REPLACE TABLE epc_domestic_tbl AS SELECT * FROM epc_domestic_df')
 con.execute('CREATE UNIQUE INDEX uprn_idx ON epc_domestic_tbl (uprn)')
-# make the domestic epc view for export to ODS
-con.execute(create_view_qry)
+# make the domestic and non domestic views for export to ODS
+con.execute(create_epc_domestic_view_qry)
+con.execute(create_epc_non_domestic_view_qry)
 # %%
-del epc_domestic_df, ca_tenure_lsoa
+del epc_domestic_df, ca_tenure_lsoa, imd_df, ca_lsoa_codes
 
 # %%
 con.execute("EXPORT DATABASE 'data/db_export' (FORMAT PARQUET);")
