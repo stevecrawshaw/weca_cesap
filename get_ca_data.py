@@ -347,7 +347,8 @@ def ingest_certs(la_list: list, cols_schema: dict, root_dir: str) -> pl.DataFram
 
 def ingest_dom_certs_csv(la_list: list, cols_schema: dict) -> pl.DataFrame:
     """
-    Loop through all csv files in the epc_csv folder and ingest them into a single DF. Use an optimised polars query to ingest a subset of columns and do some transformations to create a single large DF of EPC data
+    Loop through all csv files in the epc_csv 
+    folder and ingest them into a single DF. Use an optimised polars query to ingest a subset of columns and do some transformations to create a single large DF of EPC data
     """
     all_lazyframes = []
     # rename columns to replace hyphens with underscores
