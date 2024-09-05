@@ -47,9 +47,9 @@ ca_lsoa_codes = get_ca.get_ca_lsoa_codes(postcodes_df)
 # run cell below if not needing to update LSOA geodata (its expensive and crashes)
 
 # %%
-if not download_lsoa:
-    reproject_path = 'data/geojson/ca_lsoa_pwc_wgs84.geojson'
-    reproject_lsoa_poly_path = 'data/geojson/ca_lsoa_poly_wgs84.geojson'
+# if not download_lsoa:
+#     reproject_path = 'data/geojson/ca_lsoa_pwc_wgs84.geojson'
+#     reproject_lsoa_poly_path = 'data/geojson/ca_lsoa_poly_wgs84.geojson'
 
 # %%
 # rename the LSOA features and return the path

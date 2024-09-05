@@ -203,42 +203,49 @@ def get_postcode_df(postcode_file: str, ca_la_codes: list) -> pl.DataFrame:
     pcdf = postcodes_q.collect()
     return pcdf
 
-def get_geojson(url = "https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/LLSOA_Dec_2021_PWC_for_England_and_Wales_2022/FeatureServer/0/query",
-                      destination_directory = "data\\geojson"):
-    """
-    Download geoJSON from ESRI ONS OG
-    Return the path of the downloaded file
-    THIS ONLY DOWNLOADS 2000 RECORDS DO NOT USE - DOWNLOAD MANUALLY
-    """
-    
-    files = [f for f in os.listdir(destination_directory) if os.path.isfile(os.path.join(destination_directory, f))]
+def get_chunk_range(base_url: str, params_base: dict, max_records: int = 2000) -> list:
+    '''
+    Get the range of offsets to query the ArcGIS API based on the record count
+    '''
+    param_rt = {'returnCountOnly': 'true'}
+    # combine base and return count parameters
+    params = {**params_base, **param_rt}
+    record_count = requests.get(base_url, params = params).json().get('count')
+    chunk_size = round(record_count / math.ceil(record_count / max_records))
+    chunk_range = list(range(0, record_count, chunk_size))
+    return chunk_range
 
-    if files:
-        for file in files:
-            file_path = os.path.join(destination_directory, file)
-            os.remove(file_path)
-    else:
-        print("No files found in the directory.")
+def get_gis_data(offset: int, params_base: dict, base_url: str) -> pl.DataFrame:
+    '''
+    Get the data from the ArcGIS API based on the offset
+    '''
+    with requests.get(base_url,
+                      params = {**params_base, **{'resultOffset': offset}},
+                      stream = True) as r:
+        r.raise_for_status()
+        features = r.json().get('features')
+        features_df = (
+            pl.DataFrame(features)
+            .unnest('attributes')
+            .drop('GlobalID')
+            .unnest('geometry')
+            )
+    return features_df
 
-    params = {
-         'outFields': '*',
-         'where': '1=1',
-         'f': 'geojson'
+def make_lsoa_df(base_url: str, params_base: dict, max_records: int = 2000) -> pl.DataFrame:
+    '''
+    Make a polars DataFrame of the LSOA data from the ArcGIS API
+    by calling the get_chunk_range and get_data functions
+    concatenated and sorted by the FID
+    '''
+    chunk_range = get_chunk_range(base_url, params_base, max_records)
+    df_list = []
+    for offset in chunk_range:
+        df_list.append(get_data(offset, params_base, base_url))
+    lsoa_df = pl.concat(df_list).unique().sort('FID')
+    return lsoa_df
 
-    }
-    # Download the file
-    response = requests.get(url, params)
-    if response.status_code != 200:
-            raise Exception(f'API call failed {response.status_code}')
-    with open(os.path.join(destination_directory, "esri.geojson"), "wb") as f:
-        f.write(response.content)
 
-    files_list =  [os.path.join(destination_directory, file) for file in os.listdir(destination_directory)]
-    if len(files_list) == 1:
-        path = files_list[0]
-    else:
-         print("More than one file present")
-    return path
 
 def get_ca_lsoa_codes(postcodes_df: pl.DataFrame) -> list:
     """
