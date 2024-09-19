@@ -10,8 +10,6 @@ import json
 from pathlib import Path
 import geojson
 
-
-
 #%%
 base_url = f'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/LLSOA_Dec_2021_PWC_for_England_and_Wales_2022/FeatureServer/0/query?'
 base_url = 'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/LSOA_Dec_2001_EW_BFC_2022/FeatureServer/0/query?'
@@ -37,16 +35,16 @@ def get_chunk_range(base_url: str, params_base: dict, max_records: int = 2000) -
     return chunk_range
 
 #%%
-# chunk_range = get_chunk_range(base_url, params_base, max_records = 2000)
-
+chunk_range = get_chunk_range(base_url, params_base, max_records = 2000)
 #%%
 def get_gis_data(offset: int, params_base: dict, base_url: str) -> pl.DataFrame:
     '''
     Get the data from the ArcGIS API based on the offset
     '''
     with requests.get(base_url,
-                      params = {**params_base, **{'resultOffset': offset}},
-                      stream = True) as r:
+                      params = {**params_base,
+                                **{'resultOffset': offset}},
+                                stream = True) as r:
         r.raise_for_status()
         features = r.json().get('features')
         features_df = (
