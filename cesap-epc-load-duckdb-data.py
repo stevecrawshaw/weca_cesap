@@ -1,5 +1,5 @@
 # %%
-# use .venv - make sure to restart jupyter kernel. duckdb need python 3.10
+# use .venv - make sure to restart jupyter kernel.
 import polars as pl
 import duckdb
 import get_ca_data as get_ca # functions for retrieving CA \ common data

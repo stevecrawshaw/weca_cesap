@@ -11,8 +11,8 @@ from pathlib import Path
 import geojson
 
 #%%
-base_url = f'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/LLSOA_Dec_2021_PWC_for_England_and_Wales_2022/FeatureServer/0/query?'
-base_url = 'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/LSOA_Dec_2001_EW_BFC_2022/FeatureServer/0/query?'
+base_url_centroids = f'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/LLSOA_Dec_2021_PWC_for_England_and_Wales_2022/FeatureServer/0/query?'
+base_url_polys = 'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/LSOA_Dec_2001_EW_BFC_2022/FeatureServer/0/query?'
 params_base = {
     'where': '1=1',
     'outFields': '*',
@@ -35,7 +35,7 @@ def get_chunk_range(base_url: str, params_base: dict, max_records: int = 2000) -
     return chunk_range
 
 #%%
-chunk_range = get_chunk_range(base_url, params_base, max_records = 2000)
+chunk_range = get_chunk_range(base_url_centroids, params_base, max_records = 2000)
 #%%
 def get_gis_data(offset: int, params_base: dict, base_url: str) -> pl.DataFrame:
     '''
@@ -76,7 +76,7 @@ def get_write_poly_data(offset: int, params_base: dict, base_url: str) -> bool:
 #%%
 def write_all_poly_geojson(base_url: str, params_base: dict, max_records: int = 2000) -> pl.DataFrame:
     '''
-    Make a polars DataFrame of the LSOA data from the ArcGIS API
+    Retrieve and write polygon data from the ArcGIS API
     by calling the get_chunk_range and get_data functions
     concatenated and sorted by the FID
     '''
@@ -88,7 +88,7 @@ def write_all_poly_geojson(base_url: str, params_base: dict, max_records: int = 
 #get_write_poly_data(0, params_base, base_url)
 
 #%%
-write_all_poly_geojson(base_url, params_base, max_records = 2000)
+write_all_poly_geojson(base_url_polys, params_base, max_records = 2000)
 #%%
 folder_path = r'data\lsoa_poly'
 
@@ -103,10 +103,17 @@ for filename in os.listdir(folder_path):
 
 geo_collection = geojson.GeometryCollection(collection)
 
+#%%
+
+with open(os.path.join(folder_path, 'geo_collection.json'), 'w') as f:
+    json.dump(geo_collection, f, indent=4)
+
+#%%
+
 with open(os.path.join(folder_path,'test_collection.geojson'), 'w') as f:
     geojson.dump(geo_collection, f)
 #%%
-write_all_poly_geojson(base_url, params_base, max_records = 2000)
+write_all_poly_geojson(base_url_polys, params_base, max_records = 2000)
 
 #%%
 
