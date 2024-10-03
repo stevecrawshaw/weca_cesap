@@ -9,10 +9,13 @@ import os
 import json
 from pathlib import Path
 import geojson
+import geopandas as gpd
+import get_ca_data as get_ca
 
 #%%
 base_url_centroids = f'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/LLSOA_Dec_2021_PWC_for_England_and_Wales_2022/FeatureServer/0/query?'
 base_url_polys = 'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/LSOA_Dec_2001_EW_BFC_2022/FeatureServer/0/query?'
+base_url_lsoa_lookups = 'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/LSOA21_WD24_LAD24_EW_LU/FeatureServer/0/query?'
 params_base = {
     'where': '1=1',
     'outFields': '*',
@@ -55,6 +58,68 @@ def get_gis_data(offset: int, params_base: dict, base_url: str) -> pl.DataFrame:
             )
     return features_df
 
+#%%
+
+def get_flat_data(offset: int, params_base: dict, base_url: str) -> pl.DataFrame:
+    '''
+    Get the data from the ArcGIS API based on the offset
+    '''
+    with requests.get(base_url,
+                      params = {**params_base,
+                                **{'resultOffset': offset}},
+                                stream = True) as r:
+        r.raise_for_status()
+        features = r.json().get('features')
+        features_df = (
+            pl.DataFrame(features)
+            .unnest('attributes')
+            .drop('GlobalID')
+            )
+    return features_df
+
+#%%
+ca_la_df = get_ca.get_ca_la_df(year = 2023)
+
+#%%
+ladcds_in_cauths = (ca_la_df
+ .select(pl.col('ladcd'))
+ .to_series())
+
+#%%
+
+chunk_range_lookups = get_chunk_range(base_url_lsoa_lookups, params_base, max_records = 1000)
+
+
+#%%
+
+lookups_pldf_list = [get_flat_data(chunk, params_base, base_url_lsoa_lookups) for chunk in chunk_range_lookups]
+
+#%%
+
+lookups_pldf = pl.concat(lookups_pldf_list, how='vertical_relaxed')
+
+#%%
+
+lsoas_in_cauths_pldf = (lookups_pldf
+                   .filter(pl.col('LAD24CD').is_in(ladcds_in_cauths))
+)
+lsoas_in_cauths_iter = (lsoas_in_cauths_pldf
+                        .select(pl.col('LSOA21CD'))
+                        .to_series())
+
+chunk_size = 100
+lsoas_in_cauths_chunks = [lsoas_in_cauths_iter[i:i + chunk_size] for i in range(0, len(lsoas_in_cauths_iter), chunk_size)]
+#%%
+
+lsoas_in_cauths_chunks[0]
+#%%
+base_url_lsoa_polys = base_url = "https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/Lower_layer_Super_Output_Areas_December_2021_Boundaries_EW_BFC_V10/FeatureServer/0/query"
+#%%
+
+
+#%%
+
+#%%
 
 #%%
 
