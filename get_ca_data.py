@@ -146,7 +146,8 @@ def get_zipped_csv_file(url = "https://www.arcgis.com/sharing/rest/content/items
     if not os.path.exists(destination_directory):
         os.makedirs(destination_directory)
 
-    files = [f for f in os.listdir(destination_directory) if os.path.isfile(os.path.join(destination_directory, f))]
+    files = [f for f in os.listdir(destination_directory)
+             if os.path.isfile(os.path.join(destination_directory, f))]
 
     if files:
         for file in files:
@@ -202,49 +203,6 @@ def get_postcode_df(postcode_file: str, ca_la_codes: list) -> pl.DataFrame:
         )
     pcdf = postcodes_q.collect()
     return pcdf
-
-def get_chunk_range(base_url: str, params_base: dict, max_records: int = 2000) -> list:
-    '''
-    Get the range of offsets to query the ArcGIS API based on the record count
-    '''
-    param_rt = {'returnCountOnly': 'true'}
-    # combine base and return count parameters
-    params = {**params_base, **param_rt}
-    record_count = requests.get(base_url, params = params).json().get('count')
-    chunk_size = round(record_count / math.ceil(record_count / max_records))
-    chunk_range = list(range(0, record_count, chunk_size))
-    return chunk_range
-
-def get_gis_data(offset: int, params_base: dict, base_url: str) -> pl.DataFrame:
-    '''
-    Get the data from the ArcGIS API based on the offset
-    '''
-    with requests.get(base_url,
-                      params = {**params_base, **{'resultOffset': offset}},
-                      stream = True) as r:
-        r.raise_for_status()
-        features = r.json().get('features')
-        features_df = (
-            pl.DataFrame(features)
-            .unnest('attributes')
-            .drop('GlobalID')
-            .unnest('geometry')
-            )
-    return features_df
-
-def make_lsoa_df(base_url: str, params_base: dict, max_records: int = 2000) -> pl.DataFrame:
-    '''
-    Make a polars DataFrame of the LSOA data from the ArcGIS API
-    by calling the get_chunk_range and get_data functions
-    concatenated and sorted by the FID
-    '''
-    chunk_range = get_chunk_range(base_url, params_base, max_records)
-    df_list = []
-    for offset in chunk_range:
-        df_list.append(get_data(offset, params_base, base_url))
-    lsoa_df = pl.concat(df_list).unique().sort('FID')
-    return lsoa_df
-
 
 
 def get_ca_lsoa_codes(postcodes_df: pl.DataFrame) -> list:
