@@ -34,7 +34,7 @@ def get_chunk_list(base_url: str, params_base: dict, max_records: int = 2000) ->
     return chunk_range
 
 #%%
-centroind_chunk_list = get_chunk_list(base_url_centroids, params_base, max_records = 2000)
+centroid_chunk_list = get_chunk_list(base_url_centroids, params_base, max_records = 2000)
 #%%
 def get_gis_data(offset: int,
                  params_base: dict,
@@ -176,18 +176,20 @@ def make_lsoa_pwc_df(base_url: str,
     return lsoa_df
 
 #%%
-lsoa_pwc_df = make_lsoa_pwc_df(base_url = base_url_centroids,
+lsoa_pwc_df = (make_lsoa_pwc_df(base_url = base_url_centroids,
                            params_base = params_base, 
                            params_other = {'where': '1=1'},
-                           max_records = 2000)
+                           max_records = 2000))
 #%%
 
 lsoa_pwc_cauth_df = (lsoa_pwc_df
                      .filter(pl.col('LSOA21CD').is_in(lsoas_in_cauths_iter))
+                     .rename(lambda x: x.lower())
                      )
 #%%
 # Indices of Multiple Deprivation Data by LSOA
-lsoa_imd_df = pl.read_csv('https://github.com/humaniverse/IMD/raw/master/data-raw/imd_england_lsoa.csv')
+lsoa_imd_df = (pl.read_csv('https://github.com/humaniverse/IMD/raw/master/data-raw/imd_england_lsoa.csv')
+.rename(lambda x: x.lower()))
 
 #%%
 
@@ -236,3 +238,4 @@ con.sql("FROM lsoa_poly_cauth_df")
 
 #%%
 con.close
+# %%
