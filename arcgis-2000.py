@@ -23,7 +23,8 @@ params_base = {
     'outSR': 4326,
     'f': 'json'
 }
-
+# %% [markdown]
+# Define functions to get data from the ArcGIS API
 # %%
 def get_chunk_list(base_url: str, params_base: dict, max_records: int = 2000) -> list:
     '''
@@ -123,8 +124,6 @@ def make_lsoa_pwc_df(base_url: str,
                                     base_url))
     lsoa_df = pl.concat(df_list).unique()
     return lsoa_df
-#%%
-centroid_chunk_list = get_chunk_list(base_url_lsoa_2021_centroids, params_base, max_records = 2000)
 
 #%%
 ca_la_df = get_ca.get_ca_la_df(year = 2023)
@@ -184,6 +183,7 @@ lsoa_2021_gdf.to_parquet('data/lsoa_poly/lsoa_poly_cauth_2024.parquet')
 # %% [markdown]
 # Retrieve the 2021 LSOA points (population weighted centroids)
 #%%
+#%%
 lsoa_2021_pwc_df = make_lsoa_pwc_df(base_url = base_url_lsoa_2021_centroids,
                            params_base = params_base, 
                            params_other = {'where': '1=1'},
@@ -212,18 +212,53 @@ lookups_2011_pldf_list = [get_flat_data(chunk,
                         for chunk
                         in lookups_2011_chunk_list]
 #%%
-
 lookups_2011_pldf = (pl
                      .concat(lookups_2011_pldf_list,
                              how='vertical_relaxed')
                              .rename(lambda x: x.lower())
                              )
 
+
+
 #%%
 lookups_2011_pldf.glimpse()
+
+# %%
+lsoacd_2011_in_cauths_iter = (lookups_2011_pldf
+                              .filter(pl.col('lad11cd')
+                                      .is_in(ladcds_in_cauths))
+                                      .select(pl.col('lsoa11cd'))
+                                      .unique()
+                                      .to_series()
+                                      )
+# %%
+lsoa_2011_chunk_list = get_chunk_list(base_url_2011_lsoa_polys, params_base, max_records = 2000)
+
+# get 100 lsoas at a time
+lsoa_2011_in_cauths_chunks = [lsoacd_2011_in_cauths_iter[i:i + chunk_size]
+                          for i in range(0,
+                                         len(lsoacd_2011_in_cauths_iter),
+                                         chunk_size)]
+
+# %%
+lsoa_2011_poly_url_list = [make_poly_url(base_url_2011_lsoa_polys,
+                               params_base,
+                               lsoas,
+                               lsoa_code_name='LSOA11CD')
+                  for lsoas in
+                  lsoa_2011_in_cauths_chunks]
+
+# %%
+lsoa_2011_gdf_list = [gpd.read_file(polys_url) for polys_url in lsoa_2011_poly_url_list]
+
+# %%
+lsoa_2011_gdf = gpd.GeoDataFrame(pd.concat(lsoa_2011_gdf_list,  ignore_index=True))
+
+# %%
+lsoa_2011_gdf.to_parquet('data/lsoa_poly/lsoa_poly_cauth_2011.parquet')
 #%%
-# Indices of Multiple Deprivation Data by LSOA - can be done in duckdb direct
-lsoa_imd_df = (pl.read_csv(imd_data_path, )
+# Indices of Multiple Deprivation Data by LSOA (2011)
+lsoa_imd_df = (pl.read_csv(imd_data_path)
 .rename(lambda x: x.lower()))
 
 #%%
@@ -242,37 +277,47 @@ con.install_extension('httpfs')
 con.load_extension('httpfs')
 
 #%%
-con.sql("CREATE TABLE lsoa_pwc_df AS SELECT * FROM lsoa_pwc_df")
+con.sql("CREATE OR REPLACE TABLE lsoa_2021_pwc_tbl AS SELECT * FROM lsoa_2021_pwc_df")
 #%%
-con.sql("ALTER TABLE lsoa_pwc_df ADD COLUMN geom GEOMETRY")
+con.sql("ALTER TABLE lsoa_2021_pwc_tbl ADD COLUMN geom GEOMETRY")
 #%%
-con.sql("UPDATE lsoa_pwc_df SET geom = ST_Point(x, y)")
+con.sql("UPDATE lsoa_2021_pwc_tbl SET geom = ST_Point(x, y)")
 #%%
-con.sql("FROM lsoa_pwc_df")
+con.sql("FROM lsoa_2021_pwc_tbl")
 
 #%%
 # crs conversion
-con.sql("UPDATE lsoa_pwc_df SET geom = ST_Transform(geom, 'EPSG:4326', 'EPSG:27700')")
+con.sql("UPDATE lsoa_2021_pwc_tbl SET geom = ST_Transform(geom, 'EPSG:4326', 'EPSG:27700')")
 
 #%%
-con.sql("FROM lsoa_pwc_df")
+con.sql("FROM lsoa_2021_pwc_tbl")
 
 #%%
 
-qry_parq = """
+qry_parq_2021 = """
 CREATE OR REPLACE TABLE 
-lsoa_poly_cauth_df AS 
+lsoa_poly_2021_cauth_tbl AS 
 SELECT * EXCLUDE geometry,
 ST_GeomFROMWKB(geometry) AS geom
 FROM 'data/lsoa_poly/lsoa_poly_cauth_2024.parquet'
 """
 
-con.sql(qry_parq)
+con.sql(qry_parq_2021)
+
+#%%
+qry_parq_2011 = """
+CREATE OR REPLACE TABLE 
+lsoa_poly_2011_cauth_tbl AS 
+SELECT * EXCLUDE geometry,
+ST_GeomFROMWKB(geometry) AS geom
+FROM 'data/lsoa_poly/lsoa_poly_cauth_2011.parquet'
+"""
+
+con.sql(qry_parq_2011)
 
 #%%
 
-con.sql("FROM lsoa_poly_cauth_df")
-
+con.sql("CREATE OR REPLACE TABLE lsoa_imd_tbl AS SELECT * FROM lsoa_imd_df")
 #%%
-con.close
+con.close()
 # %%
