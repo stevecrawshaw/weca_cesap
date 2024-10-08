@@ -10,6 +10,7 @@ import pathlib
 import zipfile
 from pyproj import Transformer
 from pathlib import Path
+from urllib.parse import urlencode, urlunparse
 import yaml
 
 """
@@ -28,6 +29,16 @@ def delete_all_csv_files(folder_path):
     for file in csv_files:
         os.remove(file)
         print(f"Deleted: {file}")
+
+def delete_file(file_path):
+    """
+    Delete a file if it exists.
+    """
+    if os.path.exists(file_path):
+        os.remove(file_path)
+        print(f"Deleted: {file_path}")
+    else:
+        print(f"File not found: {file_path}")
 
 def remove_numbers(input_string: str) -> str:
     """
@@ -119,7 +130,105 @@ def get_ca_la_df(year: int,
             return clean_ca_la_df.vstack(ns_line_df)
         else:
             return clean_ca_la_df
-    
+        
+def get_chunk_list(base_url: str, params_base: dict, max_records: int = 2000) -> list:
+    '''
+    Get a list of offsets to query the ArcGIS API based on the record count limit
+    Sometimes the limit is 1000, sometimes 2000
+    Required due to pagination of API
+    '''
+    params_rt = {'returnCountOnly': 'true', 'where': '1=1'}
+    # combine base and return count parameters
+    params = {**params_base, **params_rt}
+    record_count = (requests
+                    .get(base_url, params = params)
+                    .json()
+                    .get('count'))
+    chunk_size = round(record_count / math.ceil(record_count / max_records))
+    chunk_list = list(range(0, record_count, chunk_size))
+    return chunk_list
+
+
+def get_gis_data(offset: int,
+                 params_base: dict,
+                 params_other: dict,
+                 base_url: str) -> pl.DataFrame:
+    '''
+    Get a dataset containing geometry from the ArcGIS API based on the offset
+    '''
+    with requests.get(base_url,
+                      params = {**params_base,
+                                **{'resultOffset': offset},
+                                **params_other},
+                                stream = True) as r:
+        r.raise_for_status()
+        features = r.json().get('features')
+        features_df = (
+            pl.DataFrame(features)
+            .unnest('attributes')
+            .drop('GlobalID')
+            .unnest('geometry')
+            )
+    return features_df
+
+
+def get_flat_data(offset: int,
+                  params_base: dict,
+                  params_other: dict,
+                  base_url: str) -> pl.DataFrame:
+    '''
+    Get the data from the ArcGIS API based on the offset
+    This is for data without a geometry field
+    '''
+    with requests.get(base_url,
+                      params = {**params_base,
+                                **{'resultOffset': offset},
+                                **params_other},
+                                stream = True) as r:
+        r.raise_for_status()
+        features = r.json().get('features')
+        features_df = (
+            pl.DataFrame(features)
+            .unnest('attributes')
+            .drop('GlobalID')
+            )
+    return features_df
+
+def make_poly_url(base_url: str,
+                  params_base: dict,
+                  lsoa_code_list: list,
+                  lsoa_code_name: str) -> list[str]:
+    '''
+    Make a url to retrieve lsoa polygons given a list of lsoa codes
+    '''
+    lsoa_in_clause = str(tuple(list(lsoa_code_list)))
+    where_params = {'where': f"{lsoa_code_name} IN {lsoa_in_clause}"}
+    params = {**params_base, **where_params}
+    # use urlencode to avoid making an actual call to get the urls
+    query_string = urlencode(params)
+    url = urlunparse(('','', base_url, '', query_string, ''))
+    return url
+
+
+def make_lsoa_pwc_df(base_url: str,
+                     params_base: dict,
+                     params_other: dict,
+                     max_records: int = 2000) -> pl.DataFrame:
+    '''
+    Make a polars DataFrame of the LSOA data from the ArcGIS API
+    by calling the get_chunk_range and get_data functions
+    concatenated and sorted by the FID
+    '''
+    chunk_range = get_chunk_list(base_url, params_base, max_records)
+    df_list = []
+    for offset in chunk_range:
+        df_list.append(get_gis_data(offset,
+                                    params_base,
+                                    params_other,
+                                    base_url))
+    lsoa_df = pl.concat(df_list).unique()
+    return lsoa_df
+   
 def get_rename_dict(df: pl.DataFrame, remove_numbers, rm_numbers = False) -> dict:
     old = df.columns
     counts = {}
@@ -216,65 +325,6 @@ def get_ca_lsoa_codes(postcodes_df: pl.DataFrame) -> list:
         .to_series()
         .to_list()
     )
-
-def filter_geojson(input_file: str, output_file: str, property_name: str, ca_lsoa_codes: list) -> str:
-    
-    """
-    Filter the LSOA population weighted centroid geoJSON file for 
-    just those LSOA's within CA's
-    and save the resulting file as geoJSON
-    return the path of the output file - this can be directly loaded into datasette
-    
-    """
-    # Load GeoJSON file
-    with open(input_file, 'r') as f:
-        geojson_data = json.load(f)
-    ca_lsoa_set = set(ca_lsoa_codes) 
-        # Filter features based on the specified property and values
-    filtered_features = [
-        feature for feature in geojson_data['features']
-        if feature['properties'].get(property_name) in ca_lsoa_set
-    ]
-
-    # Create new GeoJSON structure with filtered features
-    filtered_geojson = {
-        'type': 'FeatureCollection',
-        'features': filtered_features
-    }
-
-    # Save filtered GeoJSON to output file
-    with open(output_file, 'w') as f:
-        json.dump(filtered_geojson, f)
-
-    return output_file
-
-def reproject(input_bng_file: str, output_wgs84_file: str, lsoa_code: str = 'LSOA21CD') -> str:
-    """
-    The filtered geojson file for pop weighted lsoa centroids in CA's
-    is projected to BNG. This function reprojects it to WGS 84 to enable visualisation in datasette
-    """
-    # Create a transformer
-    transformer = Transformer.from_crs('epsg:27700', 'epsg:4326', always_xy=True)
-
-    # Load your GeoJSON file
-    with open(input_bng_file, 'r') as f:
-        data = json.load(f)
-
-    # Reproject each feature
-    for feature in data['features']:
-        if feature['geometry']['type'] == 'Point':
-            x, y = feature['geometry']['coordinates']
-            lon, lat = transformer.transform(x, y)
-            feature['geometry']['coordinates'] = [lon, lat]
-
-        if lsoa_code in feature['properties']:
-            feature['properties']['lsoacd'] = feature['properties'].pop(lsoa_code)
-
-    # Save the reprojected GeoJSON
-    with open(output_wgs84_file, 'w') as f:
-        json.dump(data, f)
-    
-    return(output_wgs84_file)
 
 def ingest_certs(la_list: list, cols_schema: dict, root_dir: str) -> pl.DataFrame:
     """
@@ -399,44 +449,6 @@ def get_epc_csv(la: str):
             print(f"Written {len(body)} bytes to {output_file}")
 
             first_request = False
-
-def clean_lsoa_geojson(file_path: str = 'data/geojson/for_rename.geojson',
-                       lsoacd: str = 'LSOA21CD'):
-    """
-    First download the population weighted centroids from ONS open geography portal
-    LLSOA_Dec_2021_PWC_for_England_and_Wales_2022_-7534040603619445107
-    This function removes redundant fields and renames the LSOA codes to lower case no numbers
-    And outputs geojson ready for import to the duckdb. Returns the file path of the new file.
-    """
-    try:
-        with open(file_path, 'r') as file:
-            geojson_data = json.load(file)
-
-        # Check if the file is a valid GeoJSON format
-        if 'features' not in geojson_data:
-            raise ValueError("Invalid GeoJSON format. 'features' key not found.")
-
-        # Rename the keys from 'LSOA21CD' to 'lsoacd'
-        for feature in geojson_data['features']:
-            if 'properties' in feature:
-                feature['properties'].pop('GlobalID', None)  # Remove 'GlobalID' if exists
-                feature['properties'].pop('FID', None)       # Remove 'FID' if exists
-                if lsoacd in feature['properties']:
-                    feature['properties']['lsoacd'] = feature['properties'].pop(lsoacd)
-
-        success = True
-    except Exception as e:
-        error_message = str(e)
-        print(error_message)
-        success = False
-    # construct new file path for saved renamed json  
-    if success:
-        new_stem = f'{pathlib.PurePath(file_path).stem}_{datetime.now().date().isoformat()}'
-        new_path = pathlib.PurePath(file_path).with_stem(new_stem)
-        out_file = open(new_path, "w")
-        json.dump(geojson_data, out_file)
-        out_file.close()
-    return new_path if success else False
 
 def load_data(command_list: list, db_path: str = 'data/ca_epc.duckdb', overwrite = True):
     if os.path.isfile(db_path):

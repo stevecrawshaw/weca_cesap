@@ -95,7 +95,6 @@ def make_poly_url(base_url: str,
                   lsoa_code_name: str) -> list[str]:
     '''
     Make a url to retrieve lsoa polygons given a list of lsoa codes
-
     '''
     lsoa_in_clause = str(tuple(list(lsoa_code_list)))
     where_params = {'where': f"{lsoa_code_name} IN {lsoa_in_clause}"}
@@ -198,7 +197,7 @@ lsoa_2021_pwc_cauth_df = (lsoa_2021_pwc_df
                      )
 # %% [markdown]
 # Retrieve the 2011 LSOA polygon data for the LEP - for joining with IMD
-# The latest IMD data availoable is for 2019
+# The latest IMD data available is for 2019
 # %%
 lookups_2011_chunk_list = get_chunk_list(base_url_lsoa_2011_lookups,
                                          params_base, 
@@ -217,9 +216,6 @@ lookups_2011_pldf = (pl
                              how='vertical_relaxed')
                              .rename(lambda x: x.lower())
                              )
-
-
-
 #%%
 lookups_2011_pldf.glimpse()
 
@@ -232,8 +228,6 @@ lsoacd_2011_in_cauths_iter = (lookups_2011_pldf
                                       .to_series()
                                       )
 # %%
-lsoa_2011_chunk_list = get_chunk_list(base_url_2011_lsoa_polys, params_base, max_records = 2000)
-
 # get 100 lsoas at a time
 lsoa_2011_in_cauths_chunks = [lsoacd_2011_in_cauths_iter[i:i + chunk_size]
                           for i in range(0,
@@ -255,7 +249,8 @@ lsoa_2011_gdf_list = [gpd.read_file(polys_url) for polys_url in lsoa_2011_poly_u
 lsoa_2011_gdf = gpd.GeoDataFrame(pd.concat(lsoa_2011_gdf_list,  ignore_index=True))
 
 # %%
-lsoa_2011_gdf.to_parquet('data/lsoa_poly/lsoa_poly_cauth_2011.parquet')
+# can export all tables from duckdb to parquet in one hit
+# lsoa_2011_gdf.to_parquet('data/lsoa_poly/lsoa_poly_cauth_2011.parquet')
 #%%
 # Indices of Multiple Deprivation Data by LSOA (2011)
 lsoa_imd_df = (pl.read_csv(imd_data_path)

@@ -3,6 +3,8 @@
 import polars as pl
 import duckdb
 import get_ca_data as get_ca # functions for retrieving CA \ common data
+import geopandas as gpd
+import pandas as pd
 download_epc = False
 download_lsoa = False
 
@@ -10,10 +12,30 @@ download_lsoa = False
 # This notebook retrieves all the base data needed for comparison analysis with other Combined Authorities and loads it into a duckdb database.
 # SQLite was tried, but it is slow, not directly compatible with polars and does not work well with datasette because of the size of data.
 
+# %% [markdown]
+## Define the base urls for the ArcGIS API and some parameters
+# we get the 2011 LSOA data as these match to the IMD lsoa codes
+#%%
+base_url_lsoa_2021_centroids = f'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/LLSOA_Dec_2021_PWC_for_England_and_Wales_2022/FeatureServer/0/query?'
+base_url_2021_lsoa_polys = "https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/Lower_layer_Super_Output_Areas_December_2021_Boundaries_EW_BFC_V10/FeatureServer/0/query"
+base_url_2011_lsoa_polys = 'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/LSOA_Dec_2011_Boundaries_Generalised_Clipped_BGC_EW_V3/FeatureServer/0/query'
+base_url_lsoa_2021_lookups = 'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/LSOA21_WD24_LAD24_EW_LU/FeatureServer/0/query?'
+base_url_lsoa_2011_lookups = 'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/LSOA01_LSOA11_LAD11_EW_LU_ddfe1cd1c2784c9b991cded95bc915a9/FeatureServer/0/query'
+imd_data_path = 'https://github.com/humaniverse/IMD/raw/master/data-raw/imd_england_lsoa.csv'
+path_2011_poly_parquet = 'data/all_cas_lsoa_poly_2011.parquet'
+path_2021_poly_parquet = 'data/all_cas_lsoa_poly_2021.parquet'
+chunk_size = 100 # this is used in a a where clause to set the number of lsoa polys per api call
+params_base = {
+    'outFields': '*',
+    'outSR': 4326,
+    'f': 'json'
+}
+
 # %%
 ca_la_df = get_ca.get_ca_la_df(2023, inc_ns = True) # include NS
+ca_la_codes = get_ca.get_ca_la_codes(ca_la_df)
+ladcds_in_cauths = ca_la_codes # this is the same as ca_la_codes RATIONALISE
 # ca_la_df.glimpse()
-
 
 # %%
 la_list = (ca_la_df['ladcd']) #includes north somerset
@@ -30,7 +52,7 @@ ca_la_dft_lookup_df = get_ca.get_ca_la_dft_lookup(
 # ca_la_dft_lookup_df.glimpse()
 
 # %%
-ca_la_codes = get_ca.get_ca_la_codes(ca_la_df)
+
 postcode_file = get_ca.get_zipped_csv_file(url = "https://www.arcgis.com/sharing/rest/content/items/3770c5e8b0c24f1dbe6d2fc6b46a0b18/data",
                       file_folder_name = "postcode_lookup")
 postcodes_df = get_ca.get_postcode_df(postcode_file, ca_la_codes)
@@ -52,35 +74,106 @@ ca_lsoa_codes = get_ca.get_ca_lsoa_codes(postcodes_df)
 #     reproject_lsoa_poly_path = 'data/geojson/ca_lsoa_poly_wgs84.geojson'
 
 # %%
-# rename the LSOA features and return the path
 if download_lsoa:
-    cleaned_lsoa_pwc_path = get_ca.clean_lsoa_geojson('data/LLSOA_Dec_2021_PWC_for_England_and_Wales_2022_-7534040603619445107.geojson',
-                                                    lsoacd='LSOA21CD')
-    # filter for just the LSOA's in Combined Authorities
-    ca_lsoa_pwc_path = get_ca.filter_geojson(input_file = cleaned_lsoa_pwc_path,
-                                            output_file='data/geojson/ca_lsoa_pwc.geojson',
-                                            property_name ='lsoacd',
-                                            ca_lsoa_codes = ca_lsoa_codes)
+    lookups_2021_chunk_list = get_ca.get_chunk_list(base_url_lsoa_2021_lookups,
+                                      params_base,
+                                      max_records = 1000)
+# list of pl.dataframes of the lookups data in cauths
+    lookups_2021_pldf_list = [get_ca.get_flat_data(chunk,
+                                    params_base,
+                                    params_other = {'where':'1=1'},
+                                    base_url = base_url_lsoa_2021_lookups)
+                        for chunk
+                        in lookups_2021_chunk_list]
 
-    cleaned_lsoa_poly_path = get_ca.clean_lsoa_geojson('data/geojson/Lower_layer_Super_Output_Areas_December_2021_Boundaries_EW_BFE_V10_1289561450475266465.geojson',
-                                                    lsoacd='LSOA21CD')
-    # reproject to WGS84:4326 as default from ONS is 27700
-    reproject_path = get_ca.reproject(ca_lsoa_pwc_path, output_wgs84_file='data/geojson/ca_lsoa_pwc_wgs84.geojson', lsoa_code = 'lsoacd')
+    lookups_2021_pldf = pl.concat(lookups_2021_pldf_list, how='vertical_relaxed')
 
-    # filter for just the LSOA's polys in Combined Authorities
-    ca_lsoa_poly_path = get_ca.filter_geojson(input_file = cleaned_lsoa_poly_path,
-                                            output_file='data/geojson/ca_lsoa_poly.geojson',
-                                            property_name ='lsoacd',
-                                            ca_lsoa_codes = ca_lsoa_codes)
+    lsoas_in_cauths_iter = (lookups_2021_pldf
+                            .filter(pl.col('LAD24CD').is_in(ladcds_in_cauths))
+                            .select(pl.col('LSOA21CD'))
+                            .to_series())
+    
+    lsoas_in_cauths_chunks = [lsoas_in_cauths_iter[i:i + chunk_size]
+                            for i in range(0,
+                                            len(lsoas_in_cauths_iter),
+                                            chunk_size)]
 
-    reproject_lsoa_poly_path = get_ca.reproject(ca_lsoa_poly_path,
-                                                output_wgs84_file='data/geojson/ca_lsoa_poly_wgs84.geojson',
-                                                lsoa_code = 'lsoacd')
-#%%
-imd_df = get_ca.get_imd_df(path = 'data/imd2019lsoa.csv')
-# %%
-# https://geoportal.statistics.gov.uk/datasets/lsoa-dec-2021-pwc-for-england-and-wales/explore
+    # list of urls to get the lsoa polygons in the combined authorities
+    lsoa_2021_poly_url_list = [get_ca.make_poly_url(base_url_2021_lsoa_polys,
+                                params_base,
+                                lsoas,
+                                lsoa_code_name='LSOA21CD')
+                    for lsoas in
+                    lsoas_in_cauths_chunks]
 
+    # a list of geopandas dataframes to hold all lsoa polygons in the combined authorities
+    lsoa_2021_gdf_list = [gpd.read_file(polys_url) for polys_url in lsoa_2021_poly_url_list]
+
+    lsoa_2021_gdf = gpd.GeoDataFrame(pd.concat(lsoa_2021_gdf_list,
+                                        ignore_index=True))
+    # parquet export to import to duckdb
+    lsoa_2021_gdf.to_parquet('data/all_cas_lsoa_poly_2021.parquet')
+
+    # Retrieve the 2021 LSOA points (population weighted centroids)
+    lsoa_2021_pwc_df = get_ca.make_lsoa_pwc_df(base_url = base_url_lsoa_2021_centroids,
+                            params_base = params_base, 
+                            params_other = {'where': '1=1'},
+                            max_records = 2000)
+
+    lsoa_2021_pwc_cauth_df = (lsoa_2021_pwc_df
+                        .filter(pl.col('LSOA21CD').is_in(lsoas_in_cauths_iter))
+                        .rename(lambda x: x.lower())
+                        )
+    # Retrieve the 2011 LSOA polygon data for the LEP - for joining with IMD
+    # The latest IMD data available is for 2019
+    lookups_2011_chunk_list = get_ca.get_chunk_list(base_url_lsoa_2011_lookups,
+                                            params_base, 
+                                                max_records = 1000)
+
+    lookups_2011_pldf_list = [get_ca.get_flat_data(chunk,
+                                        params_base,
+                                        params_other = {'where':'1=1'},
+                                        base_url = base_url_lsoa_2011_lookups)
+                            for chunk
+                            in lookups_2011_chunk_list]
+    
+    lookups_2011_pldf = (pl
+                        .concat(lookups_2011_pldf_list,
+                                how='vertical_relaxed')
+                                .rename(lambda x: x.lower())
+                                )
+
+    lsoacd_2011_in_cauths_iter = (lookups_2011_pldf
+                                .filter(pl.col('lad11cd')
+                                        .is_in(ladcds_in_cauths))
+                                        .select(pl.col('lsoa11cd'))
+                                        .unique()
+                                        .to_series()
+                                        )
+
+    lsoa_2011_in_cauths_chunks = [lsoacd_2011_in_cauths_iter[i:i + chunk_size]
+                            for i in range(0,
+                                            len(lsoacd_2011_in_cauths_iter),
+                                            chunk_size)]
+
+    lsoa_2011_poly_url_list = [get_ca.make_poly_url(base_url_2011_lsoa_polys,
+                                params_base,
+                                lsoas,
+                                lsoa_code_name='LSOA11CD')
+                    for lsoas in
+                    lsoa_2011_in_cauths_chunks]
+
+    lsoa_2011_gdf_list = [gpd.read_file(polys_url) for polys_url in lsoa_2011_poly_url_list]
+
+    lsoa_2011_gdf = gpd.GeoDataFrame(pd.concat(lsoa_2011_gdf_list,  ignore_index=True))
+    # parquet export to import to duckdb
+    lsoa_2011_gdf.to_parquet('data/all_cas_lsoa_poly_2011.parquet')
+
+    lsoa_imd_df = (pl.read_csv(imd_data_path)
+                   .rename(lambda x: x.lower()))
+
+# %% [markdown]
+    # Now for the EPC data
 # %%
 cols_schema_nondom = {
     'LMK_KEY': pl.Utf8,
@@ -247,8 +340,12 @@ try:
     con.execute("BEGIN TRANSACTION;")
     con.execute('INSTALL spatial;')
     con.execute('LOAD spatial;')
-    con.execute(f'CREATE OR REPLACE TABLE lsoa_pwc_tbl AS SELECT * FROM ST_Read("{reproject_path}")')
-    con.execute(f'CREATE OR REPLACE TABLE lsoa_poly_tbl AS SELECT * FROM ST_Read("{reproject_lsoa_poly_path}")')
+    con.execute("CREATE OR REPLACE TABLE lsoa_2021_pwc_tbl AS SELECT * FROM lsoa_2021_pwc_df")
+    con.execute("ALTER TABLE lsoa_2021_pwc_tbl ADD COLUMN geom GEOMETRY")
+    con.execute("UPDATE lsoa_2021_pwc_tbl SET geom = ST_Point(x, y)")
+    con.execute("CREATE OR REPLACE TABLE imd_lsoa_tbl AS SELECT * FROM lsoa_imd_df")
+    con.execute(f'CREATE OR REPLACE TABLE lsoa_poly_2021_tbl AS SELECT * FROM ST_Read("{path_2021_poly_parquet}")')
+    con.execute(f'CREATE OR REPLACE TABLE lsoa_poly_2011_tbl AS SELECT * FROM ST_Read("{path_2011_poly_parquet}")')
     con.execute('CREATE UNIQUE INDEX lsoacd_poly_idx ON lsoa_poly_tbl (lsoacd)')
     con.execute('CREATE UNIQUE INDEX lsoacd_pwc_idx ON lsoa_pwc_tbl (lsoacd)')
     con.execute('CREATE OR REPLACE TABLE ca_tenure_lsoa_tbl AS SELECT * FROM ca_tenure_lsoa')
@@ -375,7 +472,11 @@ con.execute('CREATE UNIQUE INDEX uprn_idx ON epc_domestic_tbl (uprn)')
 con.execute(create_epc_domestic_view_qry)
 con.execute(create_epc_non_domestic_view_qry)
 # %%
-del epc_domestic_df, ca_tenure_lsoa, imd_df, ca_lsoa_codes
+del epc_domestic_df, ca_tenure_lsoa, ca_lsoa_codes
+# %%
+# temporary files to delete
+get_ca.delete_file(path_2011_poly_parquet)
+get_ca.delete_file(path_2021_poly_parquet)
 
 # %%
 con.execute("EXPORT DATABASE 'data/db_export' (FORMAT PARQUET);")
