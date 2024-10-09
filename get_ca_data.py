@@ -12,6 +12,12 @@ from pyproj import Transformer
 from pathlib import Path
 from urllib.parse import urlencode, urlunparse
 import yaml
+import math
+import logging
+from typing import Dict, Optional
+import requests
+from dateutil import parser
+from dateutil.relativedelta import relativedelta
 
 """
 Functions to get geographies and EPC data for combined authorities
@@ -20,6 +26,14 @@ To populate a duckdb database which holds base data for analyses
 supporting the CESAP indicators. Plotting and further analysis are done in
 R scripts in this project folder.
 """
+
+def load_config(config_path: str) -> Dict:
+    try:
+        with open(config_path, 'r') as config_file:
+            return yaml.safe_load(config_file)
+    except FileNotFoundError:
+        logging.error(f"Config file not found: {config_path}")
+        raise
 
 def delete_all_csv_files(folder_path):
     # Get the list of all CSV files in the folder
@@ -398,14 +412,87 @@ def ingest_dom_certs_csv(la_list: list, cols_schema: dict) -> pl.DataFrame:
     certs_df = pl.concat(pl.collect_all(all_lazyframes))   # faster than intermediate step             
     return certs_df
 
-def get_epc_csv(la: str):
-    '''
-    Uses the opendatacommunities API to get EPC data for a given local authority and writes it to a CSV file
-    the epc auth_token is in the config.yml file in parent directory
-    This function uses pagination cribbed from https://epc.opendatacommunities.org/docs/api/domestic#domestic-pagination
-    '''
+def get_epc_from_date() -> Dict[str, int]:
+    """
+    Get the last date of the EPC data on the open data portal.
+
+    Returns:
+        dict: A dictionary containing the year and month of the last date.
+              Format: {'year': int, 'month': int}
+
+    Raises:
+        requests.RequestException: If there's an error with the API request.
+        ValueError: If there's an error parsing the response or the date.
+    """
+    base_url = 'https://opendata.westofengland-ca.gov.uk/api/explore/v2.1'
+    endpoint = 'catalog/datasets'
+    dataset = 'lep-epc-domestic-point'
+    call_type = 'records'
+    query_param = {
+        'select': 'max(date) as max_date',
+        'limit': 1,
+        'offset': 0,
+        'timezone': 'UTC',
+        'include_links': 'false',
+        'include_app_metas': 'false'
+    }
+
+    url = f'{base_url}/{endpoint}/{dataset}/{call_type}'
+
+    try:
+        with requests.Session() as session:
+            response = session.get(url, params=query_param)
+            response.raise_for_status()
+            data = response.json()
+
+        max_date = data.get('results', [{}])[0].get('max_date')
+        if not max_date:
+            raise ValueError("No max_date found in the API response")
+
+        parsed_date = parser.parse(max_date) + relativedelta(months=1)
+        return {'year': parsed_date.year, 'month': parsed_date.month}
+
+    except requests.RequestException as e:
+        raise requests.RequestException(f"Error fetching data from API: {e}")
+    except (ValueError, KeyError, IndexError) as e:
+        raise ValueError(f"Error parsing API response: {e}")
+
+
+
+def get_epc_csv(la: str,
+                from_date: Dict[str, int],
+                to_date: Optional[Dict[str, int]] = None) -> None:
+    """
+    Uses the opendatacommunities API to get EPC data for a given local authority and 
+    time period. It writes it to a CSV file.
+
+    Args:
+        la (str): Local authority code.
+        from_date (Dict[str, int]): Start date with 'year' and 'month' keys.
+        to_date (Optional[Dict[str, int]]): End date with 'year' and 'month' keys. 
+                                            If None, uses current date.
+
+    Raises:
+        requests.RequestException: If there's an error with the API request.
+        IOError: If there's an error writing to the file.
+    """
+    # Set up logging
+    logging.basicConfig(level=logging.INFO)
+
     # Load the EPC auth token from the config file
-    epc_key = yaml.safe_load(open('../config.yml'))['epc']['auth_token']
+    config = load_config('../config.yml')
+    epc_key = config['epc']['auth_token']
+
+    # Deal with data parameters
+    from_year = from_date.get('year')
+    from_month = from_date.get('month')
+    if to_date == None:
+        to_month = datetime.now().month - 1 or 12
+        to_year = datetime.now().year if to_month != 12 else datetime.now().year - 1
+    else:
+        to_year = to_date.get('year')
+        to_month = to_date.get('month')
+
     # Page size (max 5000)
     query_size = 5000
     # Output file name
@@ -413,7 +500,13 @@ def get_epc_csv(la: str):
 
     # Base url and example query parameters
     base_url = 'https://epc.opendatacommunities.org/api/v1/domestic/search'
-    query_params = {'size': query_size, 'local-authority': la}
+    query_params = {'size': query_size,
+                    'local-authority': la,
+                    'from-month': from_month,
+                    'from-year': from_year,
+                    'to-month': to_month,
+                    'to-year': to_year
+                    }
 
     # Set up authentication
     headers = {
@@ -421,34 +514,39 @@ def get_epc_csv(la: str):
         'Authorization': f'Basic {epc_key}'
     }
 
-    # Keep track of whether we have made at least one request for CSV headers and search-after
-    first_request = True
-    # Keep track of search-after from previous request
-    search_after = None
-    # Loop over entries in query blocks of up to 5000 to write all the data into a file
+    output_file = f'data/epc_csv/epc_{la}.csv'
+    
+    try:
+        with open(output_file, 'w') as file:
+            first_request = True
+            search_after = None
 
-    with open(output_file, 'w') as file:
-        # Perform at least one request; if there's no search_after, there are no further results
-        while search_after is not None or first_request:
-            # Only set search-after if this isn't the first request
-            if not first_request:
-                query_params["search-after"] = search_after
+            while search_after is not None or first_request:
+                if not first_request:
+                    query_params["search-after"] = search_after
 
-            # Make the request
-            response = requests.get(base_url, headers=headers, params=query_params)
-            response.raise_for_status()
-            body = response.text
-            search_after = response.headers.get('X-Next-Search-After')
+                response = requests.get(base_url, headers=headers, params=query_params)
+                response.raise_for_status()
+                
+                body = response.text
+                search_after = response.headers.get('X-Next-Search-After')
 
-            # For CSV data, only keep the header row from the first response
-            if not first_request and body:
-                body = body.split("\n", 1)[1]
+                if not first_request and body:
+                    body = body.split("\n", 1)[1]
 
-            # Write received data
-            file.write(body)
-            print(f"Written {len(body)} bytes to {output_file}")
+                file.write(body)
+                logging.info(f"Written {len(body)} bytes to {output_file}")
 
-            first_request = False
+                first_request = False
+
+    except requests.RequestException as e:
+        logging.error(f"API request error: {e}")
+        raise
+    except IOError as e:
+        logging.error(f"File writing error: {e}")
+        raise
+
+    logging.info(f"EPC data successfully written to {output_file}")
 
 def load_data(command_list: list, db_path: str = 'data/ca_epc.duckdb', overwrite = True):
     if os.path.isfile(db_path):

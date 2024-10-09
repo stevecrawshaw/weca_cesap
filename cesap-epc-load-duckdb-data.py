@@ -5,8 +5,9 @@ import duckdb
 import get_ca_data as get_ca # functions for retrieving CA \ common data
 import geopandas as gpd
 import pandas as pd
-download_epc = False
-download_lsoa = False
+
+download_epc = True
+download_lsoa = True
 
 # %% [markdown]
 # This notebook retrieves all the base data needed for comparison analysis with other Combined Authorities and loads it into a duckdb database.
@@ -39,8 +40,8 @@ ladcds_in_cauths = ca_la_codes # this is the same as ca_la_codes RATIONALISE
 
 # %%
 la_list = (ca_la_df['ladcd']) #includes north somerset
-f'There are {str(la_list.shape)[1:3]} Local Authorities in Combined Authorities'
 ladnm = tuple(ca_la_df['ladnm'].to_list())
+f'There are {str(la_list.shape)[1:3]} Local Authorities in Combined Authorities'
 
 # %% [markdown]
 # Get the lookup table that relates DFT Local authority ID's in the Combined authorities to ONS LA codes
@@ -53,9 +54,9 @@ ca_la_dft_lookup_df = get_ca.get_ca_la_dft_lookup(
 
 # %%
 
-postcode_file = get_ca.get_zipped_csv_file(url = "https://www.arcgis.com/sharing/rest/content/items/3770c5e8b0c24f1dbe6d2fc6b46a0b18/data",
-                      file_folder_name = "postcode_lookup")
-postcodes_df = get_ca.get_postcode_df(postcode_file, ca_la_codes)
+# postcode_file = get_ca.get_zipped_csv_file(url = "https://www.arcgis.com/sharing/rest/content/items/3770c5e8b0c24f1dbe6d2fc6b46a0b18/data",
+#                       file_folder_name = "postcode_lookup")
+# postcodes_df = get_ca.get_postcode_df(postcode_file, ca_la_codes)
 
 # %%
 # this is hit by the 2000 record limit too so use DL file
@@ -63,7 +64,7 @@ postcodes_df = get_ca.get_postcode_df(postcode_file, ca_la_codes)
 #                       destination_directory = "data\\geojson")
 
 # %%
-ca_lsoa_codes = get_ca.get_ca_lsoa_codes(postcodes_df)
+#ca_lsoa_codes = get_ca.get_ca_lsoa_codes(postcodes_df)
 
 # %% [markdown]
 # run cell below if not needing to update LSOA geodata (its expensive and crashes)
@@ -195,6 +196,8 @@ cols_schema_nondom = {
     'UPRN': pl.Utf8
     }
 
+# %% [markdown]
+## download from https://epc.opendatacommunities.org/downloads/non-domestic
 # %%
 epc_non_domestic = (pl.scan_csv(
     'data/all-non-domestic-certificates-single-file/certificates.csv',
@@ -264,11 +267,15 @@ cols_schema_adjusted = {
 # %%
 # Only run this if you are updating the EPC data from the opendatacommunities API
 # THIS WILL TAKE AT LEAST 2 HOURS TO RUN!!!
+# could do with tqdm in here
 if not download_epc:
     print('Not downloading EPC data')
 else:
     get_ca.delete_all_csv_files('data/epc_csv')
-    [get_ca.get_epc_csv(la) for la in la_list]
+    [get_ca.get_epc_csv(la,
+                        from_date = get_ca.get_epc_from_date())
+                        for la 
+                        in la_list]
 # %%
 epc_domestic = get_ca.ingest_dom_certs_csv(la_list, cols_schema_adjusted)
 epc_domestic.glimpse()
