@@ -2,20 +2,12 @@
 from datetime import datetime
 import requests
 import polars as pl
-import os
-import glob
-import duckdb
-import json
-import pathlib
-import zipfile
-from pyproj import Transformer
 from pathlib import Path
 from urllib.parse import urlencode, urlunparse
 import yaml
 import math
 import logging
 from typing import Dict, Optional
-import requests
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
 
@@ -28,6 +20,9 @@ R scripts in this project folder.
 """
 
 def load_config(config_path: str) -> Dict:
+    """
+    Function to retrieve credentials from a config file.
+    """
     try:
         with open(config_path, 'r') as config_file:
             return yaml.safe_load(config_file)
@@ -36,20 +31,25 @@ def load_config(config_path: str) -> Dict:
         raise
 
 def delete_all_csv_files(folder_path):
+    # Convert the folder path to a Path object
+    folder = Path(folder_path)
+    
     # Get the list of all CSV files in the folder
-    csv_files = glob.glob(os.path.join(folder_path, '*.csv'))
+    csv_files = folder.glob('*.csv')
     
     # Loop through the list and remove each file
     for file in csv_files:
-        os.remove(file)
+        file.unlink()
         print(f"Deleted: {file}")
+
 
 def delete_file(file_path):
     """
-    Delete a file if it exists.
+    Delete a file if it exists using pathlib.
     """
-    if os.path.exists(file_path):
-        os.remove(file_path)
+    path = Path(file_path)
+    if path.exists():
+        path.unlink()
         print(f"Deleted: {file_path}")
     else:
         print(f"File not found: {file_path}")
@@ -146,11 +146,11 @@ def get_ca_la_df(year: int,
             return clean_ca_la_df
         
 def get_chunk_list(base_url: str, params_base: dict, max_records: int = 2000) -> list:
-    '''
+    """
     Get a list of offsets to query the ArcGIS API based on the record count limit
     Sometimes the limit is 1000, sometimes 2000
     Required due to pagination of API
-    '''
+    """
     params_rt = {'returnCountOnly': 'true', 'where': '1=1'}
     # combine base and return count parameters
     params = {**params_base, **params_rt}
@@ -162,14 +162,13 @@ def get_chunk_list(base_url: str, params_base: dict, max_records: int = 2000) ->
     chunk_list = list(range(0, record_count, chunk_size))
     return chunk_list
 
-
 def get_gis_data(offset: int,
                  params_base: dict,
                  params_other: dict,
                  base_url: str) -> pl.DataFrame:
-    '''
+    """
     Get a dataset containing geometry from the ArcGIS API based on the offset
-    '''
+    """
     with requests.get(base_url,
                       params = {**params_base,
                                 **{'resultOffset': offset},
@@ -185,15 +184,14 @@ def get_gis_data(offset: int,
             )
     return features_df
 
-
 def get_flat_data(offset: int,
                   params_base: dict,
                   params_other: dict,
                   base_url: str) -> pl.DataFrame:
-    '''
+    """
     Get the data from the ArcGIS API based on the offset
     This is for data without a geometry field
-    '''
+    """
     with requests.get(base_url,
                       params = {**params_base,
                                 **{'resultOffset': offset},
@@ -212,9 +210,9 @@ def make_poly_url(base_url: str,
                   params_base: dict,
                   lsoa_code_list: list,
                   lsoa_code_name: str) -> list[str]:
-    '''
+    """
     Make a url to retrieve lsoa polygons given a list of lsoa codes
-    '''
+    """
     lsoa_in_clause = str(tuple(list(lsoa_code_list)))
     where_params = {'where': f"{lsoa_code_name} IN {lsoa_in_clause}"}
     params = {**params_base, **where_params}
@@ -223,16 +221,15 @@ def make_poly_url(base_url: str,
     url = urlunparse(('','', base_url, '', query_string, ''))
     return url
 
-
 def make_lsoa_pwc_df(base_url: str,
                      params_base: dict,
                      params_other: dict,
                      max_records: int = 2000) -> pl.DataFrame:
-    '''
+    """
     Make a polars DataFrame of the LSOA data from the ArcGIS API
     by calling the get_chunk_range and get_data functions
     concatenated and sorted by the FID
-    '''
+    """
     chunk_range = get_chunk_list(base_url, params_base, max_records)
     df_list = []
     for offset in chunk_range:
@@ -258,46 +255,6 @@ def get_rename_dict(df: pl.DataFrame, remove_numbers, rm_numbers = False) -> dic
 
     return dict(zip(old, new))
         
-def get_zipped_csv_file(url = "https://www.arcgis.com/sharing/rest/content/items/3770c5e8b0c24f1dbe6d2fc6b46a0b18/data",
-                      file_folder_name = "postcode_lookup"):
-    """
-    Delete any existing files in the folder
-    Download and unzip a CSV lookup file for the UK
-    Return the path of the downloaded file
-    """
-    destination_directory = f'data//{file_folder_name}'
-    if not os.path.exists(destination_directory):
-        os.makedirs(destination_directory)
-
-    files = [f for f in os.listdir(destination_directory)
-             if os.path.isfile(os.path.join(destination_directory, f))]
-
-    if files:
-        for file in files:
-            file_path = os.path.join(destination_directory, file)
-            os.remove(file_path)
-    else:
-        print("No files found in the directory.")
-
-    # Download the file
-    response = requests.get(url)
-    if response.status_code != 200:
-            raise Exception(f'API call failed {response.status_code}')
-    with open("file_folder_name.zip", "wb") as f:
-        f.write(response.content)
-
-    # Unzip the file
-    with zipfile.ZipFile("file_folder_name.zip", "r") as zip_ref:
-        zip_ref.extractall(destination_directory)
-
-    files_list =  [os.path.join(destination_directory, file) for file in os.listdir(destination_directory)]
-    if len(files_list) == 1:
-        file_path = files_list[0]
-    else:
-         print("More than one file present")
-    return file_path
-
-
 def get_ca_la_codes(ca_la_df: pl.DataFrame) -> list:
     """
     Return a list of the LA codes which comprise each Combined Authority
@@ -327,7 +284,6 @@ def get_postcode_df(postcode_file: str, ca_la_codes: list) -> pl.DataFrame:
     pcdf = postcodes_q.collect()
     return pcdf
 
-
 def get_ca_lsoa_codes(postcodes_df: pl.DataFrame) -> list:
     """
     Get all the LSOA codes within combined authorities
@@ -340,44 +296,12 @@ def get_ca_lsoa_codes(postcodes_df: pl.DataFrame) -> list:
         .to_list()
     )
 
-def ingest_certs(la_list: list, cols_schema: dict, root_dir: str) -> pl.DataFrame:
-    """
-    THIS IS NOW DEPRECATED REPLACED BY ingest_dom_certs_csv 
-    Loop through all folders in a root directory
-    if the folder name matches an item in a list of folder names
-    us an optimised polars query to ingest a subset of columns and do 
-    some transformations to create a single large DF of EPC data
-    """
-    all_lazyframes = []
-    cols_select_list = list(cols_schema.keys())
-
-    for item in la_list:
-        for folder_name in os.listdir(root_dir):
-            # Check if the folder name matches an item in la_list
-            if item in folder_name:
-                file_path = os.path.join(root_dir, folder_name, "certificates.csv")
-                # Check if certificates.csv actually exists inside the folder
-                if os.path.exists(file_path):
-                    # Optimised query which implements predicate pushdown for each file
-                    # Polars optimises the query to make it fast and efficient
-                    q = (
-                    pl.scan_csv(file_path,
-                    dtypes = cols_schema,
-                    )
-                    .select(pl.col(cols_select_list))
-                    .with_columns(pl.col('LODGEMENT_DATETIME').str.to_datetime(format='%Y-%m-%d %H:%M:%S', strict=False))
-                    .sort(pl.col(['UPRN', 'LODGEMENT_DATETIME']))
-                    .group_by('UPRN').last()
-                    )
-                    all_lazyframes.append(q)
-    # Concatenate list of lazyframes into one consolidated DF, then collect all at once - FAST
-    certs_df = pl.concat(pl.collect_all(all_lazyframes))   # faster than intermediate step             
-    return certs_df
-
 def ingest_dom_certs_csv(la_list: list, cols_schema: dict) -> pl.DataFrame:
     """
     Loop through all csv files in the epc_csv 
-    folder and ingest them into a single DF. Use an optimised polars query to ingest a subset of columns and do some transformations to create a single large DF of EPC data
+    folder and ingest them into a single DF. 
+    Use an optimised polars query to ingest a subset of columns
+    and do some transformations to create a single large DF of EPC data
     """
     all_lazyframes = []
     # rename columns to replace hyphens with underscores
@@ -388,13 +312,13 @@ def ingest_dom_certs_csv(la_list: list, cols_schema: dict) -> pl.DataFrame:
 
     for item in la_list:
 
-        file_path = f'data/epc_csv/epc_{item}.csv'
+        file_path = Path('data/epc_csv') / f'epc_{item}.csv'
 
-        if os.path.exists(file_path):
+        if file_path.exists():
             # Optimised query which implements predicate pushdown for each file
             # Polars optimises the query to make it fast and efficient
             q = (
-            pl.scan_csv(file_path,
+            pl.scan_csv(str(file_path),
             dtypes = cols_schema,
             encoding='utf8-lossy', # or trips up with odd characters
             ignore_errors=True
@@ -456,8 +380,6 @@ def get_epc_from_date() -> Dict[str, int]:
         raise requests.RequestException(f"Error fetching data from API: {e}")
     except (ValueError, KeyError, IndexError) as e:
         raise ValueError(f"Error parsing API response: {e}")
-
-
 
 def get_epc_csv(la: str,
                 from_date: Dict[str, int],
@@ -548,24 +470,6 @@ def get_epc_csv(la: str,
 
     logging.info(f"EPC data successfully written to {output_file}")
 
-def load_data(command_list: list, db_path: str = 'data/ca_epc.duckdb', overwrite = True):
-    if os.path.isfile(db_path):
-        if overwrite:
-            os.remove(db_path)
-        else:
-            os.rename(db_path, 'data/old_db.duckdb')
-    
-    con = duckdb.connect(db_path)
-    success = True
-    for command in command_list:
-        try:
-            con.execute(command)
-        except duckdb.DatabaseError as e:
-            success = False
-            print(f'{command} failed {e}')
-    con.close()
-    return db_path if success else success
-
 def get_ca_la_dft_lookup(dft_csv_path: str, la_list: list) -> pl.DataFrame:
     """
     Read the DFT annual traffic data, get the most recent year's data and return just the ONS la codes (ladcd)
@@ -582,32 +486,13 @@ def get_ca_la_dft_lookup(dft_csv_path: str, la_list: list) -> pl.DataFrame:
                 
     return ca_la_dft_lookup_df
 
-def populate_sqlite(dfs_dict: dict, db_path: str = 'data/sqlite/ca_epc.db', overwrite: bool = True):
-
-    if os.path.isfile(db_path):
-        if overwrite:
-            os.remove(db_path)
-        else:
-            os.rename(db_path, f'{db_path}_old')
-
-    uri = Path("sqlite:///" + db_path).as_posix()
-    
-    for table_name, pldf in dfs_dict.items():
-        (pldf
-         .write_database(
-             table_name = table_name, 
-             if_exists = 'replace',
-             connection = uri,
-             engine = 'adbc'
-            )
-            )
 def clean_tenure(expr: pl.Expr, new_colname: str) -> pl.Expr:
-    ''''
+    """
     Function for cleaning the tenure column
     The column is piped into this function
     In a .with_columns context
 
-    '''
+    """
     return (pl.when(expr.str.contains('wner'))
     .then(pl.lit('Owner occupied'))
     .when(expr.str.contains('rivate'))
@@ -618,12 +503,12 @@ def clean_tenure(expr: pl.Expr, new_colname: str) -> pl.Expr:
     .alias(new_colname))
 
 def make_n_construction_age(df: pl.DataFrame, new_colname: str) -> pl.DataFrame:
-    '''
+    """
     Take a dataframe and create a new column with the nominal construction date
     Creating temporary columns and then dropping them
     Return the dataframe with the new column
     Done in polars for speed
-    '''
+    """
 
     return  (df
     .with_columns(pl.col('construction_age_band')
@@ -653,45 +538,3 @@ def make_n_construction_age(df: pl.DataFrame, new_colname: str) -> pl.DataFrame:
 
     .drop('age_int', '_8_chars', 'age_char', 'lower', 'upper')
     )
-        
-def get_imd_df(path: str = 'data/IMD2019.csv') -> pl.DataFrame:
-    '''
-    Read the IMD CSV file and return a polars dataframe
-    with the IMD rank and decile for all LSOA's in UK
-    Pivot the data to get the rank and decile as columns
-    '''
-    
-    url = '''
-    https://opendatacommunities.org/resource?uri=http%3A%2F%2Fopendatacommunities.org%2Fdata%2Fsocietal-wellbeing%2Fimd2019%2Findices
-    '''
-    try:
-        file_path = Path(path)
-
-    # Check if the file exists
-        if file_path.exists():
-            imd_df_lazy = pl.scan_csv(file_path,
-                        infer_schema_length=0)
-            metrics = pl.Series('metrics', ['Rank', 'Decile ']) # with a space :|
-
-        return ((
-            imd_df_lazy
-            .rename(lambda col: col.replace(' ', '_').lower())
-            .filter(pl.col('indices_of_deprivation').is_in(['a. Index of Multiple Deprivation (IMD)']))
-            .filter(pl.col('measurement').is_in(metrics))
-            .select(pl.col(['featurecode', 'measurement', 'value']))
-            .with_columns(pl.col('value').cast(pl.Int64).alias('value'))
-            
-        ).collect()
-        .pivot(values='value', index='featurecode', columns='measurement')
-        .rename({'featurecode': 'lsoacd',
-                'Rank': 'imd_rank',
-                'Decile ': 'imd_decile'})
-        )
-
-    # Print result or URL if the file does not exist
-    except FileNotFoundError as e:
-        print(e)
-        print("You can download the file from the following URL:")
-        url = "https://opendatacommunities.org/resource?uri=http%3A%2F%2Fopendatacommunities.org%2Fdata%2Fsocietal-wellbeing%2Fimd2019%2Findices"
-        print(url)
-        return None
