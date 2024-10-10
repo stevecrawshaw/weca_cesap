@@ -408,7 +408,7 @@ def get_epc_csv(la: str,
     # Deal with data parameters
     from_year = from_date.get('year')
     from_month = from_date.get('month')
-    if to_date == None:
+    if to_date is None:
         to_month = datetime.now().month - 1 or 12
         to_year = datetime.now().year if to_month != 12 else datetime.now().year - 1
     else:
