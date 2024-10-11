@@ -206,6 +206,18 @@ def get_flat_data(offset: int,
             )
     return features_df
 
+def get_postcode_pldf(base_url: str)-> pl.DataFrame:
+        with requests.get(base_url,
+                          stream = True) as r:
+            r.raise_for_status()
+            features = r.json().get('features')
+            features_df = (
+                pl.DataFrame(features)
+                .unnest('attributes')
+                .drop('GlobalID')
+                )
+            return features_df
+
 def make_poly_url(base_url: str,
                   params_base: dict,
                   lsoa_code_list: list,
@@ -216,6 +228,20 @@ def make_poly_url(base_url: str,
     lsoa_in_clause = str(tuple(list(lsoa_code_list)))
     where_params = {'where': f"{lsoa_code_name} IN {lsoa_in_clause}"}
     params = {**params_base, **where_params}
+    # use urlencode to avoid making an actual call to get the urls
+    query_string = urlencode(params)
+    url = urlunparse(('','', base_url, '', query_string, ''))
+    return url
+
+def make_postcode_lsoa_url(base_url: str,
+                  lsoa_code: str,
+                  lsoa_code_name: str) -> str:
+    """
+    Make a url to retrieve postcodes given a lsoa code
+    """
+    where_params = {'where': f"{lsoa_code_name}='{lsoa_code}'"}
+    params_default = {'outFields': '*', 'f': 'json'}
+    params = {**params_default, **where_params}
     # use urlencode to avoid making an actual call to get the urls
     query_string = urlencode(params)
     url = urlunparse(('','', base_url, '', query_string, ''))

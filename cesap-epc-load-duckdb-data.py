@@ -2,6 +2,7 @@
 # use .venv - make sure to restart jupyter kernel.
 import polars as pl
 import duckdb
+import json
 import get_ca_data as get_ca # functions for retrieving CA \ common data
 import geopandas as gpd
 import pandas as pd
@@ -29,7 +30,7 @@ path_2011_poly_parquet = 'data/all_cas_lsoa_poly_2011.parquet'
 path_2021_poly_parquet = 'data/all_cas_lsoa_poly_2021.parquet'
 chunk_size = 100 # this is used in a a where clause to set the number of lsoa polys per api call
 
-chunk_size = 1
+chunk_size = 100
 params_base = {
     'outFields': '*',
     'outSR': 4326,
@@ -102,6 +103,19 @@ lsoas_in_cauths_chunks = [lsoas_in_cauths_iter[i:i + chunk_size]
                         for i in range(0,
                                         len(lsoas_in_cauths_iter),
                                         chunk_size)]
+
+#%%
+lsoas_in_cauths_iter_list = list(lsoas_in_cauths_iter)
+with open("data/lsoas_in_cauths_iter.json", 'w') as f:
+    # indent=2 is not needed but makes the file human-readable 
+    # if the data is nested
+    json.dump(lsoas_in_cauths_iter_list, f, indent=2) 
+# %%
+with open("data/lsoas_in_cauths_iter.json", 'r') as f:
+    lsoas_in_cauths_iter = json.load(f)
+
+
+
 #%%
 # list of urls to get the lsoa polygons in the combined authorities
 lsoa_2021_poly_url_list = [get_ca.make_poly_url(base_url_2021_lsoa_polys,
@@ -179,19 +193,23 @@ lsoa_imd_df = (pl.read_csv(imd_data_path)
 #%%
 
 
-postcode_url_list = [get_ca.make_poly_url(base_url_postcode_centroids,
-                                params_base,
-                                lsoas,
-                                lsoa_code_name='LSOA21')
-                    for lsoas in
-                    lsoas_in_cauths_chunks]
+
+#%%
+
+postcode_url_list = [get_ca.make_postcode_lsoa_url(base_url_postcode_centroids,
+                                                  lsoa,
+                                                  lsoa_code_name='LSOA21')
+                                                  for lsoa
+                                                  in lsoas_in_cauths_iter]
+                    
+#%%
+                                         
+postcode_pldf_list = [get_ca.get_postcode_pldf(url) for url in postcode_url_list]
+
 
 
 #%%
-test_url = postcode_url_list[0]
-
-#%%
-print(test_url)
+print(postcode_url)
 #%%
 
 with requests.get(test_url,
