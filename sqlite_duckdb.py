@@ -2,6 +2,132 @@
 
 import polars as pl
 import duckdb # version 1.1.1
+import requests
+import shutil
+from pathlib import Path
+import zipfile
+#%%
+
+# url = "https://www.arcgis.com/sharing/rest/content/items/3700342d3d184b0d92eae99a78d9c7a3/data"
+
+def download_zip(url: str, directory: str = "data", filename: str = None) -> str:
+    """
+    Downloads a zip file from the given URL and saves it to the specified directory with an optional custom filename.
+    
+    Args:
+        url (str): The URL of the zip file to download.
+        directory (str): The directory where the zip file will be saved. Defaults to "data".
+        filename (str, optional): The name to save the zip file as. If not provided, the name is extracted from the URL.
+    
+    Returns:
+        str: The full path to the downloaded file.
+    """
+    # Create a Path object for the directory
+    directory_path = Path(directory)
+    
+    # Ensure the directory exists, create it if it doesn't
+    directory_path.mkdir(parents=True, exist_ok=True)
+    
+    # Use the provided filename or extract the filename from the URL
+    if filename is None:
+        filename = url.split("/")[-1]
+    
+    # Create the full file path
+    file_path = directory_path / filename
+
+    # Stream the download for efficiency
+    with requests.get(url, stream=True) as r:
+        r.raise_for_status()  # Check if the request was successful
+        with file_path.open('wb') as f:
+            shutil.copyfileobj(r.raw, f)
+    
+    return str(file_path)
+#%%
+
+zipped_file_path = download_zip(url = "https://www.arcgis.com/sharing/rest/content/items/3700342d3d184b0d92eae99a78d9c7a3/data",
+directory="data",
+filename="postcode_centroids.zip")
+
+#%%
+
+def extract_csv_from_zip(zip_file_path: str) -> str:
+    """
+    Extracts the CSV file from the immediate 'Data' folder inside the given zip file
+    and saves it directly to the same folder where the zip file is located, without
+    retaining the 'Data/' folder structure.
+    
+    Args:
+        zip_file_path (str): The path to the zip file.
+    
+    Returns:
+        str: The path to the extracted CSV file.
+    
+    Raises:
+        FileNotFoundError: If no CSV file is found in the 'Data' folder inside the zip.
+        ValueError: If multiple or no CSV files are found in the immediate 'Data' folder.
+    """
+    # Create Path object for the zip file and get the directory where it is located
+    zip_file = Path(zip_file_path)
+    extract_path = zip_file.parent  # Extract to the same directory as the zip file
+
+    # Ensure the zip file exists
+    if not zip_file.exists():
+        raise FileNotFoundError(f"Zip file '{zip_file}' does not exist.")
+
+    # Open the zip file
+    with zipfile.ZipFile(zip_file, 'r') as z:
+        # List all files in the zip archive
+        all_files = z.namelist()
+
+        # Filter for CSV files in the immediate 'Data/' folder (no subfolders)
+        csv_files = [f for f in all_files if f.startswith('Data/') and f.count('/') == 1 and f.endswith('.csv')]
+
+        # Ensure there's exactly one CSV file in the immediate 'Data' folder
+        if len(csv_files) == 0:
+            raise FileNotFoundError("No CSV file found in the immediate 'Data' folder inside the zip.")
+        elif len(csv_files) > 1:
+            raise ValueError("Multiple CSV files found in the immediate 'Data' folder. Only one expected.")
+
+        # Extract the CSV file without the 'Data/' folder structure
+        csv_file = csv_files[0]
+        csv_filename = Path(csv_file).name  # Get only the file name, ignoring the folder
+        extracted_csv_path = extract_path / csv_filename
+
+        # Extract the file, but rename it to remove the folder structure
+        with z.open(csv_file) as source, extracted_csv_path.open('wb') as target:
+            shutil.copyfileobj(source, target)
+
+        return str(extracted_csv_path)
+
+#%%
+
+csv_file = extract_csv_from_zip(zip_file_path = zipped_file_path)
+
+#%%
+
+def delete_zip_file(zip_file_path: str):
+    """
+    Deletes the specified zip file if it exists.
+    
+    Args:
+        zip_file_path (str): The path to the zip file that should be deleted.
+    
+    Raises:
+        FileNotFoundError: If the zip file does not exist.
+    """
+    # Create a Path object for the zip file
+    zip_file = Path(zip_file_path)
+
+    # Check if the file exists
+    if zip_file.exists() and zip_file.is_file():
+        # Delete the file
+        zip_file.unlink()
+        print(f"Deleted zip file: {zip_file}")
+    else:
+        raise FileNotFoundError(f"Zip file '{zip_file}' does not exist or is not a file.")
+#%%
+
+delete_zip_file(zip_file_path = zipped_file_path)
 #%%
 schema_columns = {
     'OBJECTID': 'BIGINT',
