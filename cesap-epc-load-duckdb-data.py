@@ -28,12 +28,7 @@ imd_data_path = 'https://github.com/humaniverse/IMD/raw/master/data-raw/imd_engl
 path_2011_poly_parquet = 'data/all_cas_lsoa_poly_2011.parquet'
 path_2021_poly_parquet = 'data/all_cas_lsoa_poly_2021.parquet'
 chunk_size = 100 # this is used in a a where clause to set the number of lsoa polys per api call
-nomis_ts054_url = """
-https://www.nomisweb.co.uk/api/v01/dataset/NM_2072_1.data.csv?
-date=latest&c2021_tenure_9=0,1001...1004,8,9996,9997&
-measures=20100&geography=TYPE151
-&select=GEOGRAPHY_NAME,GEOGRAPHY_CODE,C2021_TENURE_9_NAME,C2021_TENURE_9_SORTORDER,OBS_VALUE
-"""
+nomis_ts054_url = "https://www.nomisweb.co.uk/api/v01/dataset/NM_2072_1.data.csv?date=latest&c2021_tenure_9=0,1001...1004,8,9996,9997&measures=20100&geography=TYPE151&select=GEOGRAPHY_NAME,GEOGRAPHY_CODE,C2021_TENURE_9_NAME,C2021_TENURE_9_SORTORDER,OBS_VALUE"
 
 
 params_base = {
@@ -349,6 +344,14 @@ pc_centroids_q = pl.scan_csv('data/postcode_centroids.csv',
 # %% [markdown]
 ### Tenure - ts054 from NOMIS - slightly cleaned - remove csv header 
 
+#%%
+tenure_raw_df = pl.scan_csv(nomis_ts054_url)
+#%%
+# Download the CSV file from the API
+
+response = requests.get(nomis_ts054_url)
+with open('data/ts054_tenure_nomis.csv', 'wb') as file:
+    file.write(response.content)
 
 
 # %%
