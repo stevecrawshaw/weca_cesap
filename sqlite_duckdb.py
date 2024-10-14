@@ -6,9 +6,23 @@ import requests
 import shutil
 from pathlib import Path
 import zipfile
-#%%
+import logging
 
-# url = "https://www.arcgis.com/sharing/rest/content/items/3700342d3d184b0d92eae99a78d9c7a3/data"
+#%%
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),  # You can also add logging to a file, if necessary
+        logging.FileHandler('etl.log')  # Log to a file named app.log
+    ]
+)
+
+#%%
+base_url_pc_centroids_zip = "https://www.arcgis.com/sharing/rest/content/items/3700342d3d184b0d92eae99a78d9c7a3/data"
+
+#%%
 
 def download_zip(url: str, directory: str = "data", filename: str = None) -> str:
     """
@@ -22,6 +36,7 @@ def download_zip(url: str, directory: str = "data", filename: str = None) -> str
     Returns:
         str: The full path to the downloaded file.
     """
+    logging.info(f"Starting download from URL: {url}")
     # Create a Path object for the directory
     directory_path = Path(directory)
     
@@ -34,20 +49,16 @@ def download_zip(url: str, directory: str = "data", filename: str = None) -> str
     
     # Create the full file path
     file_path = directory_path / filename
-
+    logging.info(f"Saving zip file to: {file_path}")
     # Stream the download for efficiency
     with requests.get(url, stream=True) as r:
         r.raise_for_status()  # Check if the request was successful
         with file_path.open('wb') as f:
             shutil.copyfileobj(r.raw, f)
-    
+
+    logging.info(f"Download completed: {file_path}")
+
     return str(file_path)
-#%%
-
-zipped_file_path = download_zip(url = "https://www.arcgis.com/sharing/rest/content/items/3700342d3d184b0d92eae99a78d9c7a3/data",
-directory="data",
-filename="postcode_centroids.zip")
-
 #%%
 
 def extract_csv_from_zip(zip_file_path: str) -> str:
@@ -66,12 +77,15 @@ def extract_csv_from_zip(zip_file_path: str) -> str:
         FileNotFoundError: If no CSV file is found in the 'Data' folder inside the zip.
         ValueError: If multiple or no CSV files are found in the immediate 'Data' folder.
     """
+    logging.info(f"Extracting CSV from zip file: {zip_file_path}")
+
     # Create Path object for the zip file and get the directory where it is located
     zip_file = Path(zip_file_path)
     extract_path = zip_file.parent  # Extract to the same directory as the zip file
 
     # Ensure the zip file exists
     if not zip_file.exists():
+        logging.error(f"Zip file '{zip_file}' does not exist.")
         raise FileNotFoundError(f"Zip file '{zip_file}' does not exist.")
 
     # Open the zip file
@@ -84,8 +98,10 @@ def extract_csv_from_zip(zip_file_path: str) -> str:
 
         # Ensure there's exactly one CSV file in the immediate 'Data' folder
         if len(csv_files) == 0:
+            logging.error("No CSV file found in the immediate 'Data' folder.")
             raise FileNotFoundError("No CSV file found in the immediate 'Data' folder inside the zip.")
         elif len(csv_files) > 1:
+            logging.error("Multiple CSV files found in the 'Data' folder.")
             raise ValueError("Multiple CSV files found in the immediate 'Data' folder. Only one expected.")
 
         # Extract the CSV file without the 'Data/' folder structure
@@ -93,15 +109,15 @@ def extract_csv_from_zip(zip_file_path: str) -> str:
         csv_filename = Path(csv_file).name  # Get only the file name, ignoring the folder
         extracted_csv_path = extract_path / csv_filename
 
+        logging.info(f"Extracting CSV to: {extracted_csv_path}")
+
         # Extract the file, but rename it to remove the folder structure
         with z.open(csv_file) as source, extracted_csv_path.open('wb') as target:
             shutil.copyfileobj(source, target)
+        
+        logging.info(f"Extraction completed: {extracted_csv_path}")
 
         return str(extracted_csv_path)
-
-#%%
-
-csv_file = extract_csv_from_zip(zip_file_path = zipped_file_path)
 
 #%%
 
@@ -121,13 +137,26 @@ def delete_zip_file(zip_file_path: str):
     # Check if the file exists
     if zip_file.exists() and zip_file.is_file():
         # Delete the file
+        logging.info(f"Deleting zip file: {zip_file}")
         zip_file.unlink()
         print(f"Deleted zip file: {zip_file}")
+        logging.info(f"Deleted zip file: {zip_file}")
     else:
+        logging.error(f"Zip file '{zip_file}' does not exist or is not a file.")
         raise FileNotFoundError(f"Zip file '{zip_file}' does not exist or is not a file.")
 #%%
-
+zipped_file_path = download_zip(url = base_url_pc_centroids_zip,
+directory="data",
+filename="postcode_centroids.zip")
+#%%
+csv_file = extract_csv_from_zip(zip_file_path = zipped_file_path)
+#%%
 delete_zip_file(zip_file_path = zipped_file_path)
+#%%
+pl.read_csv(csv_file, n_rows=1000).glimpse()
+
+
+
 #%%
 schema_columns = {
     'OBJECTID': 'BIGINT',
@@ -212,11 +241,84 @@ schema_columns = {
     'y': 'BIGINT'
 }
 #%%
-
+schema_columns = {
+    'pcd': 'VARCHAR',
+    'pcd2': 'VARCHAR',
+    'pcds': 'VARCHAR',
+    'dointr': 'BIGINT',
+    'doterm': 'BIGINT',
+    'oscty': 'VARCHAR',
+    'ced': 'VARCHAR',
+    'oslaua': 'VARCHAR',
+    'osward': 'VARCHAR',
+    'parish': 'VARCHAR',
+    'usertype': 'BIGINT',
+    'oseast1m': 'BIGINT',
+    'osnrth1m': 'BIGINT',
+    'osgrdind': 'BIGINT',
+    'oshlthau': 'VARCHAR',
+    'nhser': 'VARCHAR',
+    'ctry': 'VARCHAR',
+    'rgn': 'VARCHAR',
+    'streg': 'VARCHAR',
+    'pcon': 'VARCHAR',
+    'eer': 'VARCHAR',
+    'teclec': 'VARCHAR',
+    'ttwa': 'VARCHAR',
+    'pct': 'VARCHAR',
+    'itl': 'VARCHAR',
+    'statsward': 'VARCHAR',
+    'oa01': 'VARCHAR',
+    'casward': 'VARCHAR',
+    'npark': 'VARCHAR',
+    'lsoa01': 'VARCHAR',
+    'msoa01': 'VARCHAR',
+    'ur01ind': 'VARCHAR',
+    'oac01': 'VARCHAR',
+    'oa11': 'VARCHAR',
+    'lsoa11': 'VARCHAR',
+    'msoa11': 'VARCHAR',
+    'wz11': 'VARCHAR',
+    'sicbl': 'VARCHAR',
+    'bua11': 'VARCHAR',
+    'buasd11': 'VARCHAR',
+    'ru11ind': 'VARCHAR',
+    'oac11': 'VARCHAR',
+    'lat': 'DOUBLE',
+    'long': 'DOUBLE',
+    'lep1': 'VARCHAR',
+    'lep2': 'VARCHAR',
+    'pfa': 'VARCHAR',
+    'imd': 'BIGINT',
+    'calncv': 'VARCHAR',
+    'icb': 'VARCHAR',
+    'oa21': 'VARCHAR',
+    'lsoa21': 'VARCHAR',
+    'msoa21': 'VARCHAR'
+}
+#%%
 con = duckdb.connect(database='data/postcodes.duckdb', read_only=False)
 
 #%%
+query_create_postcodes_centroids = f"""
+CREATE OR REPLACE TABLE postcode_centroids_tbl AS 
+SELECT * 
+FROM read_csv(
+'{csv_file}',
+dtypes={schema_columns},
+header=True,      
+null_padding=True);
+"""
 
+#%%
+
+con.execute(query_create_postcodes_centroids)
+
+#%%
+
+con.query("SELECT COUNT(*) FROM postcode_centroids_tbl;")
+
+#%%
 query = f"""
 CREATE TABLE postcode_centroids_cauth AS 
 SELECT PCDS,OSLAUA,OSWARD,OSEAST1M,OSNRTH1M,PCON,LSOA11,MSOA11,LAT,LONG,LEP1,LEP2,IMD,LSOA21,MSOA21 

@@ -1,0 +1,11 @@
+2024-10-14 08:11:54,802 - INFO - Starting download from URL: https://www.arcgis.com/sharing/rest/content/items/3700342d3d184b0d92eae99a78d9c7a3/data
+2024-10-14 08:11:54,807 - INFO - Saving zip file to: data\postcode_centroids.zip
+2024-10-14 08:12:14,231 - INFO - Download completed: data\postcode_centroids.zip
+2024-10-14 08:12:19,307 - INFO - Extracting CSV from zip file: data\postcode_centroids.zip
+2024-10-14 08:12:19,312 - INFO - Extracting CSV to: data\ONSPD_NOV_2023_UK.csv
+2024-10-14 08:12:22,105 - INFO - Extraction completed: data\ONSPD_NOV_2023_UK.csv
+2024-10-14 08:12:31,643 - INFO - Deleting zip file: data\postcode_centroids.zip
+2024-10-14 08:12:31,658 - INFO - Deleted zip file: data\postcode_centroids.zip
+2024-10-14 08:15:59,057 - INFO - Starting download from URL: https://www.arcgis.com/sharing/rest/content/items/3700342d3d184b0d92eae99a78d9c7a3/data
+2024-10-14 08:15:59,061 - INFO - Saving zip file to: data\postcode_centroids.zip
+2024-10-14 08:16:12,333 - INFO - Download completed: data\postcode_centroids.zip
