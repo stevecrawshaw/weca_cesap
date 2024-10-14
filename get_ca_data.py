@@ -1,6 +1,7 @@
 
 from datetime import datetime
 import requests
+from requests.exceptions import HTTPError, RequestException, Timeout, ConnectionError
 import polars as pl
 from pathlib import Path
 from urllib.parse import urlencode, urlunparse
@@ -10,6 +11,8 @@ import logging
 from typing import Dict, Optional
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
+import shutil
+import zipfile
 
 """
 Functions to get geographies and EPC data for combined authorities
@@ -18,6 +21,138 @@ To populate a duckdb database which holds base data for analyses
 supporting the CESAP indicators. Plotting and further analysis are done in
 R scripts in this project folder.
 """
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),  # You can also add logging to a file, if necessary
+        logging.FileHandler('etl.log')  # Log to a file named etl.log
+    ]
+)
+
+#%%
+
+def download_zip(url: str, directory: str = "data", filename: str = None) -> str:
+    """
+    Downloads a zip file from the given URL and saves it to the specified directory with an optional custom filename.
+    
+    Args:
+        url (str): The URL of the zip file to download.
+        directory (str): The directory where the zip file will be saved. Defaults to "data".
+        filename (str, optional): The name to save the zip file as. If not provided, the name is extracted from the URL.
+    
+    Returns:
+        str: The full path to the downloaded file.
+    """
+    logging.info(f"Starting download from URL: {url}")
+    # Create a Path object for the directory
+    directory_path = Path(directory)
+    
+    # Ensure the directory exists, create it if it doesn't
+    directory_path.mkdir(parents=True, exist_ok=True)
+    
+    # Use the provided filename or extract the filename from the URL
+    if filename is None:
+        filename = url.split("/")[-1]
+    
+    # Create the full file path
+    file_path = directory_path / filename
+    logging.info(f"Saving zip file to: {file_path}")
+    # Stream the download for efficiency
+    with requests.get(url, stream=True) as r:
+        r.raise_for_status()  # Check if the request was successful
+        with file_path.open('wb') as f:
+            shutil.copyfileobj(r.raw, f)
+
+    logging.info(f"Download completed: {file_path}")
+
+    return str(file_path)
+#%%
+
+def extract_csv_from_zip(zip_file_path: str) -> str:
+    """
+    Extracts the CSV file from the immediate 'Data' folder inside the given zip file
+    and saves it directly to the same folder where the zip file is located, without
+    retaining the 'Data/' folder structure.
+    
+    Args:
+        zip_file_path (str): The path to the zip file.
+    
+    Returns:
+        str: The path to the extracted CSV file.
+    
+    Raises:
+        FileNotFoundError: If no CSV file is found in the 'Data' folder inside the zip.
+        ValueError: If multiple or no CSV files are found in the immediate 'Data' folder.
+    """
+    logging.info(f"Extracting CSV from zip file: {zip_file_path}")
+
+    # Create Path object for the zip file and get the directory where it is located
+    zip_file = Path(zip_file_path)
+    extract_path = zip_file.parent  # Extract to the same directory as the zip file
+
+    # Ensure the zip file exists
+    if not zip_file.exists():
+        logging.error(f"Zip file '{zip_file}' does not exist.")
+        raise FileNotFoundError(f"Zip file '{zip_file}' does not exist.")
+
+    # Open the zip file
+    with zipfile.ZipFile(zip_file, 'r') as z:
+        # List all files in the zip archive
+        all_files = z.namelist()
+
+        # Filter for CSV files in the immediate 'Data/' folder (no subfolders)
+        csv_files = [f for f in all_files if f.startswith('Data/') and f.count('/') == 1 and f.endswith('.csv')]
+
+        # Ensure there's exactly one CSV file in the immediate 'Data' folder
+        if len(csv_files) == 0:
+            logging.error("No CSV file found in the immediate 'Data' folder.")
+            raise FileNotFoundError("No CSV file found in the immediate 'Data' folder inside the zip.")
+        elif len(csv_files) > 1:
+            logging.error("Multiple CSV files found in the 'Data' folder.")
+            raise ValueError("Multiple CSV files found in the immediate 'Data' folder. Only one expected.")
+
+        # Extract the CSV file without the 'Data/' folder structure
+        csv_file = csv_files[0]
+        csv_filename = Path(csv_file).name  # Get only the file name, ignoring the folder
+        extracted_csv_path = extract_path / csv_filename
+
+        logging.info(f"Extracting CSV to: {extracted_csv_path}")
+
+        # Extract the file, but rename it to remove the folder structure
+        with z.open(csv_file) as source, extracted_csv_path.open('wb') as target:
+            shutil.copyfileobj(source, target)
+        
+        logging.info(f"Extraction completed: {extracted_csv_path}")
+
+        return str(extracted_csv_path)
+
+#%%
+
+def delete_zip_file(zip_file_path: str):
+    """
+    Deletes the specified zip file if it exists.
+    
+    Args:
+        zip_file_path (str): The path to the zip file that should be deleted.
+    
+    Raises:
+        FileNotFoundError: If the zip file does not exist.
+    """
+    # Create a Path object for the zip file
+    zip_file = Path(zip_file_path)
+
+    # Check if the file exists
+    if zip_file.exists() and zip_file.is_file():
+        # Delete the file
+        logging.info(f"Deleting zip file: {zip_file}")
+        zip_file.unlink()
+        print(f"Deleted zip file: {zip_file}")
+        logging.info(f"Deleted zip file: {zip_file}")
+    else:
+        logging.error(f"Zip file '{zip_file}' does not exist or is not a file.")
+        raise FileNotFoundError(f"Zip file '{zip_file}' does not exist or is not a file.")
 
 def load_config(config_path: str) -> Dict:
     """
@@ -39,6 +174,7 @@ def delete_all_csv_files(folder_path):
     
     # Loop through the list and remove each file
     for file in csv_files:
+        logging.info(f"File deleted: {file}")
         file.unlink()
         print(f"Deleted: {file}")
 
@@ -50,8 +186,10 @@ def delete_file(file_path):
     path = Path(file_path)
     if path.exists():
         path.unlink()
+        logging.info(f"File deleted: {file_path}")
         print(f"Deleted: {file_path}")
     else:
+        logging.warning(f"File not found: {file_path}")
         print(f"File not found: {file_path}")
 
 def remove_numbers(input_string: str) -> str:
@@ -116,6 +254,7 @@ def get_ca_la_df(year: int,
 
         r = requests.get(url = url, params = params)
         if r.status_code != 200:
+            logging.error(f"API call failed: {baseurl}: {r.status_code}")
             raise Exception(f'API call failed {r.status_code}')
     except AssertionError:
         print(f'API call failed {r.status_code}')
@@ -141,8 +280,11 @@ def get_ca_la_df(year: int,
              )
         
         if inc_ns: # if North Somerset to be included add a line to the df
+            logging.info(f"ca_la_df with north somerset created")
             return clean_ca_la_df.vstack(ns_line_df)
+        
         else:
+            logging.info(f"ca_la_df without north somerset created")
             return clean_ca_la_df
         
 def get_chunk_list(base_url: str, params_base: dict, max_records: int = 2000) -> list:
@@ -154,12 +296,15 @@ def get_chunk_list(base_url: str, params_base: dict, max_records: int = 2000) ->
     params_rt = {'returnCountOnly': 'true', 'where': '1=1'}
     # combine base and return count parameters
     params = {**params_base, **params_rt}
-    record_count = (requests
-                    .get(base_url, params = params)
-                    .json()
-                    .get('count'))
-    chunk_size = round(record_count / math.ceil(record_count / max_records))
-    chunk_list = list(range(0, record_count, chunk_size))
+    try:
+        with requests.get(base_url, params = params) as r:
+            r.raise_for_status()
+            record_count = r.json().get('count')
+            chunk_size = round(record_count / math.ceil(record_count / max_records))
+            chunk_list = list(range(0, record_count, chunk_size))
+    except requests.RequestException as e:
+        logging.error(f"API request error: from {base_url} {e}")
+        raise requests.RequestException(f"Error fetching data from API: {e}")
     return chunk_list
 
 def get_gis_data(offset: int,
@@ -167,21 +312,65 @@ def get_gis_data(offset: int,
                  params_other: dict,
                  base_url: str) -> pl.DataFrame:
     """
-    Get a dataset containing geometry from the ArcGIS API based on the offset
+    Get a dataset containing geometry from the 
+    ArcGIS API based on the offset.
+    
+    Handles network errors, invalid data, and 
+    issues with the response structure.
     """
-    with requests.get(base_url,
-                      params = {**params_base,
-                                **{'resultOffset': offset},
-                                **params_other},
-                                stream = True) as r:
-        r.raise_for_status()
-        features = r.json().get('features')
-        features_df = (
-            pl.DataFrame(features)
-            .unnest('attributes')
-            .drop('GlobalID')
-            .unnest('geometry')
-            )
+    try:
+        # Attempt to make the request
+        with requests.get(base_url,
+                          params={**params_base,
+                                  **{'resultOffset': offset},
+                                  **params_other},
+                          stream=True) as r:
+            # Raise an error if status code is not 200
+            r.raise_for_status()
+
+            # Attempt to parse the JSON response
+            try:
+                data = r.json()
+            except ValueError as e:
+                raise ValueError("Invalid JSON response") from e
+
+            # Extract features from the response
+            features = data.get('features')
+            if not features:
+                raise ValueError("No 'features' found in the response")
+
+            # Try to convert features into a DataFrame
+            try:
+                features_df = (
+                    pl.DataFrame(features)  # Convert to DataFrame
+                    .unnest('attributes')    # Unnest the 'attributes' column
+                    .drop('GlobalID')        # Drop unnecessary columns
+                    .unnest('geometry')      # Unnest the 'geometry' column
+                )
+            except Exception as e:
+                raise RuntimeError("Error processing data into DataFrame") from e
+
+    except HTTPError as http_err:
+        print(f"HTTP error occurred: {http_err}")
+        return pl.DataFrame()  # Return an empty DataFrame on HTTP error
+    except ConnectionError as conn_err:
+        print(f"Connection error occurred: {conn_err}")
+        return pl.DataFrame()  # Return an empty DataFrame on connection error
+    except Timeout as timeout_err:
+        print(f"Timeout error occurred: {timeout_err}")
+        return pl.DataFrame()  # Return an empty DataFrame on timeout
+    except RequestException as req_err:
+        print(f"Request error occurred: {req_err}")
+        return pl.DataFrame()  # Return an empty DataFrame on general request error
+    except ValueError as json_err:
+        print(f"JSON or data error occurred: {json_err}")
+        return pl.DataFrame()  # Return an empty DataFrame on JSON/data error
+    except RuntimeError as df_err:
+        print(f"DataFrame processing error occurred: {df_err}")
+        return pl.DataFrame()  # Return an empty DataFrame on DataFrame error
+    except Exception as err:
+        print(f"An unexpected error occurred: {err}")
+        return pl.DataFrame()  # Catch-all for any other exceptions
     return features_df
 
 def get_flat_data(offset: int,
@@ -192,23 +381,12 @@ def get_flat_data(offset: int,
     Get the data from the ArcGIS API based on the offset
     This is for data without a geometry field
     """
-    with requests.get(base_url,
-                      params = {**params_base,
-                                **{'resultOffset': offset},
-                                **params_other},
-                                stream = True) as r:
-        r.raise_for_status()
-        features = r.json().get('features')
-        features_df = (
-            pl.DataFrame(features)
-            .unnest('attributes')
-            .drop('GlobalID')
-            )
-    return features_df
-
-def get_postcode_pldf(base_url: str)-> pl.DataFrame:
+    try:
         with requests.get(base_url,
-                          stream = True) as r:
+                        params = {**params_base,
+                                    **{'resultOffset': offset},
+                                    **params_other},
+                                    stream = True) as r:
             r.raise_for_status()
             features = r.json().get('features')
             features_df = (
@@ -216,7 +394,11 @@ def get_postcode_pldf(base_url: str)-> pl.DataFrame:
                 .unnest('attributes')
                 .drop('GlobalID')
                 )
-            return features_df
+    except requests.RequestException as e:
+        logging.error(f"API request error: from {base_url} {e}")
+        raise requests.RequestException(f"Error fetching data from API: {e}")
+    return features_df
+
 
 def make_poly_url(base_url: str,
                   params_base: dict,
@@ -228,20 +410,6 @@ def make_poly_url(base_url: str,
     lsoa_in_clause = str(tuple(list(lsoa_code_list)))
     where_params = {'where': f"{lsoa_code_name} IN {lsoa_in_clause}"}
     params = {**params_base, **where_params}
-    # use urlencode to avoid making an actual call to get the urls
-    query_string = urlencode(params)
-    url = urlunparse(('','', base_url, '', query_string, ''))
-    return url
-
-def make_postcode_lsoa_url(base_url: str,
-                  lsoa_code: str,
-                  lsoa_code_name: str) -> str:
-    """
-    Make a url to retrieve postcodes given a lsoa code
-    """
-    where_params = {'where': f"{lsoa_code_name}='{lsoa_code}'"}
-    params_default = {'outFields': '*', 'f': 'json'}
-    params = {**params_default, **where_params}
     # use urlencode to avoid making an actual call to get the urls
     query_string = urlencode(params)
     url = urlunparse(('','', base_url, '', query_string, ''))
@@ -290,37 +458,6 @@ def get_ca_la_codes(ca_la_df: pl.DataFrame) -> list:
             .to_series()
             .to_list()
             )
-    
-def get_postcode_df(postcode_file: str, ca_la_codes: list) -> pl.DataFrame:
-    """
-    Read the postcode file and filter the df 
-    to return only those postcodes within Combined authorities
-    """
-
-    old = ['pcds', 'lsoa21cd', 'msoa21cd', 'ladcd', 'ladnm']
-    new = ['postcode', 'lsoacd', 'msoacd', 'ladcd', 'ladnm']
-    rename_dict = dict(zip(old, new))
-
-    postcodes_q = (
-        pl.scan_csv(postcode_file)
-        .select(pl.col(old))
-        .filter(pl.col('ladcd').is_in(ca_la_codes))
-        .rename(rename_dict)
-        )
-    pcdf = postcodes_q.collect()
-    return pcdf
-
-def get_ca_lsoa_codes(postcodes_df: pl.DataFrame) -> list:
-    """
-    Get all the LSOA codes within combined authorities
-    """
-    return (
-        postcodes_df
-        .select(pl.col('lsoacd'))
-        .unique()
-        .to_series()
-        .to_list()
-    )
 
 def ingest_dom_certs_csv(la_list: list, cols_schema: dict) -> pl.DataFrame:
     """
@@ -424,9 +561,7 @@ def get_epc_csv(la: str,
         requests.RequestException: If there's an error with the API request.
         IOError: If there's an error writing to the file.
     """
-    # Set up logging
-    logging.basicConfig(level=logging.INFO)
-
+ 
     # Load the EPC auth token from the config file
     config = load_config('../config.yml')
     epc_key = config['epc']['auth_token']
@@ -498,8 +633,10 @@ def get_epc_csv(la: str,
 
 def get_ca_la_dft_lookup(dft_csv_path: str, la_list: list) -> pl.DataFrame:
     """
-    Read the DFT annual traffic data, get the most recent year's data and return just the ONS la codes (ladcd)
-    And the corresponding DFT ID which will be used in the R script to retrieve detailed link data. Year retained for context.
+    Read the DFT annual traffic data, get the most recent year's data
+    and return just the ONS la codes (ladcd)
+    And the corresponding DFT ID which will be used in the R script
+    to retrieve detailed link data. Year retained for context.
     Filter for LA's in CA's (la_list). Not all LA's in the CA's are within this set.
     """        
     ca_la_dft_lookup_df = (pl.read_csv(dft_csv_path)

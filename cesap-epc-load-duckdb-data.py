@@ -6,7 +6,6 @@ import json
 import get_ca_data as get_ca # functions for retrieving CA \ common data
 import geopandas as gpd
 import pandas as pd
-import requests
 
 download_epc = True
 download_lsoa = True
@@ -20,7 +19,7 @@ download_lsoa = True
 # we get the 2011 LSOA data as these match to the IMD lsoa codes
 #%%
 base_url_lsoa_2021_centroids = f'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/LLSOA_Dec_2021_PWC_for_England_and_Wales_2022/FeatureServer/0/query?'
-base_url_postcode_centroids = 'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/ONSPD_Online_Latest_Centroids/FeatureServer/0/query'
+base_url_pc_centroids_zip = "https://www.arcgis.com/sharing/rest/content/items/3700342d3d184b0d92eae99a78d9c7a3/data"
 base_url_2021_lsoa_polys = "https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/Lower_layer_Super_Output_Areas_December_2021_Boundaries_EW_BFC_V10/FeatureServer/0/query"
 base_url_2011_lsoa_polys = 'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/LSOA_Dec_2011_Boundaries_Generalised_Clipped_BGC_EW_V3/FeatureServer/0/query'
 base_url_lsoa_2021_lookups = 'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/LSOA21_WD24_LAD24_EW_LU/FeatureServer/0/query?'
@@ -29,8 +28,14 @@ imd_data_path = 'https://github.com/humaniverse/IMD/raw/master/data-raw/imd_engl
 path_2011_poly_parquet = 'data/all_cas_lsoa_poly_2011.parquet'
 path_2021_poly_parquet = 'data/all_cas_lsoa_poly_2021.parquet'
 chunk_size = 100 # this is used in a a where clause to set the number of lsoa polys per api call
+nomis_ts054_url = """
+https://www.nomisweb.co.uk/api/v01/dataset/NM_2072_1.data.csv?
+date=latest&c2021_tenure_9=0,1001...1004,8,9996,9997&
+measures=20100&geography=TYPE151
+&select=GEOGRAPHY_NAME,GEOGRAPHY_CODE,C2021_TENURE_9_NAME,C2021_TENURE_9_SORTORDER,OBS_VALUE
+"""
 
-chunk_size = 100
+
 params_base = {
     'outFields': '*',
     'outSR': 4326,
@@ -190,47 +195,19 @@ lsoa_2011_gdf.to_parquet('data/all_cas_lsoa_poly_2011.parquet')
 
 lsoa_imd_df = (pl.read_csv(imd_data_path)
                 .rename(lambda x: x.lower()))
-#%%
-
-
-
-#%%
-
-postcode_url_list = [get_ca.make_postcode_lsoa_url(base_url_postcode_centroids,
-                                                  lsoa,
-                                                  lsoa_code_name='LSOA21')
-                                                  for lsoa
-                                                  in lsoas_in_cauths_iter]
-                    
-#%%
-                                         
-postcode_pldf_list = [get_ca.get_postcode_pldf(url) for url in postcode_url_list]
-
-
+#%% [markdown]
+# Read the POSTCODES DATA
 
 #%%
-print(postcode_url)
+
+zipped_file_path = get_ca.download_zip(url = base_url_pc_centroids_zip,
+directory="data",
+filename="postcode_centroids.zip")
 #%%
-
-with requests.get(test_url,
-                      params = {},
-                      stream = True) as r:
-        r.raise_for_status()
-        features = r.json().get('features')
-        features_df = (
-            pl.DataFrame(features)
-            .unnest('attributes')
-            .drop('GlobalID')
-            )
-
-
-
-
-
-
-
-
-
+csv_file = get_ca.extract_csv_from_zip(zip_file_path = zipped_file_path)
+#%%
+get_ca.delete_zip_file(zip_file_path = zipped_file_path)
+#%%
 
 # %% [markdown]
     # Now for the EPC data
@@ -256,7 +233,7 @@ cols_schema_nondom = {
     }
 
 # %% [markdown]
-## download from https://epc.opendatacommunities.org/downloads/non-domestic
+### download from https://epc.opendatacommunities.org/downloads/non-domestic
 # %%
 epc_non_domestic = (pl.scan_csv(
     'data/all-non-domestic-certificates-single-file/certificates.csv',
@@ -368,20 +345,11 @@ pc_centroids_q = pl.scan_csv('data/postcode_centroids.csv',
                                  })
 # pc_centroids_df.head()
 
-# %%
-pc_min_df = pc_centroids_q.head(1).collect()
-
-# %%
-pc_rename_dict = get_ca.get_rename_dict(pc_min_df, get_ca.remove_numbers, rm_numbers=False)
-
-# %%
-pc_centroids_df = (pc_centroids_q
-                   .filter(pl.col('LAUA').is_in(la_list))
-                   .rename(mapping=pc_rename_dict)).collect()
-# pc_centroids_df.glimpse()
 
 # %% [markdown]
-# Tenure - ts054 from NOMIS - slightly cleaned - remove csv header 
+### Tenure - ts054 from NOMIS - slightly cleaned - remove csv header 
+
+
 
 # %%
 ca_tenure_lsoa = (pl.scan_csv('data/ts054_tenure_nomis.csv')
@@ -395,8 +363,6 @@ ca_tenure_lsoa = (pl.scan_csv('data/ts054_tenure_nomis.csv')
 # %%
 ca_tenure_lsoa.glimpse()
 
-# %%
-del postcodes_df
 
 # %% [markdown]
 # Load the data into a duckDB data base
