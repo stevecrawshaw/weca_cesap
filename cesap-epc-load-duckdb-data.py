@@ -6,6 +6,8 @@ import json
 import get_ca_data as get_ca # functions for retrieving CA \ common data
 import geopandas as gpd
 import pandas as pd
+import janitor.polars
+
 
 download_epc = True
 download_lsoa = True
@@ -28,8 +30,15 @@ imd_data_path = 'https://github.com/humaniverse/IMD/raw/master/data-raw/imd_engl
 path_2011_poly_parquet = 'data/all_cas_lsoa_poly_2011.parquet'
 path_2021_poly_parquet = 'data/all_cas_lsoa_poly_2021.parquet'
 chunk_size = 100 # this is used in a a where clause to set the number of lsoa polys per api call
-nomis_ts054_url = "https://www.nomisweb.co.uk/api/v01/dataset/NM_2072_1.data.csv?date=latest&c2021_tenure_9=0,1001...1004,8,9996,9997&measures=20100&geography=TYPE151&select=GEOGRAPHY_NAME,GEOGRAPHY_CODE,C2021_TENURE_9_NAME,C2021_TENURE_9_SORTORDER,OBS_VALUE"
-
+nomis_ts054_url = "https://www.nomisweb.co.uk/api/v01/dataset/NM_2072_1.data.csv"
+#?date=latest&c2021_tenure_9=0,1001...1004,8,9996,9997&measures=20100&geography=TYPE151&select=GEOGRAPHY_NAME,GEOGRAPHY_CODE,C2021_TENURE_9_NAME,C2021_TENURE_9_SORTORDER,OBS_VALUE
+ts054_params = {'date': ['latest'],
+                'c2021_tenure_9': ['0,1001...1004,8,9996,9997'],
+                'measures': ['20100'],
+                'geography': ['TYPE151'],
+                'select': ['GEOGRAPHY_NAME,GEOGRAPHY_CODE,C2021_TENURE_9_NAME,C2021_TENURE_9_SORTORDER,OBS_VALUE']
+                }
+nomis_params = get_ca.load_config('../config.yml').get('nomis')
 
 params_base = {
     'outFields': '*',
@@ -343,16 +352,28 @@ pc_centroids_q = pl.scan_csv('data/postcode_centroids.csv',
 
 # %% [markdown]
 ### Tenure - ts054 from NOMIS - slightly cleaned - remove csv header 
+#%%
+
+
 
 #%%
-tenure_raw_df = pl.scan_csv(nomis_ts054_url)
+
+tenure_raw_df = get_ca.get_nomis_data(nomis_ts054_url, ts054_params, nomis_params)
+
 #%%
-# Download the CSV file from the API
+tenure_raw_df.glimpse()
+#%%
+tenure_df = (tenure_raw_df
+             .pivot('C2021_TENURE_9_NAME',
+                    index = ['GEOGRAPHY_NAME', 'GEOGRAPHY_CODE'],
+                    values = 'OBS_VALUE')
+             .clean_names() # uses pyjanitor.polars
+             .rename({'geography_name': 'lsoa_name',
+                      'geography_code': 'lsoa21cd'})
+)
 
-response = requests.get(nomis_ts054_url)
-with open('data/ts054_tenure_nomis.csv', 'wb') as file:
-    file.write(response.content)
-
+#%%
+tenure_df.glimpse()
 
 # %%
 ca_tenure_lsoa = (pl.scan_csv('data/ts054_tenure_nomis.csv')

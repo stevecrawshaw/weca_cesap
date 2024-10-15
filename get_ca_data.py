@@ -649,6 +649,22 @@ def get_ca_la_dft_lookup(dft_csv_path: str, la_list: list) -> pl.DataFrame:
                 
     return ca_la_dft_lookup_df
 
+def get_nomis_data(base_url: str, dataset_params: dict, creds_params: dict) -> pl.DataFrame:
+    """
+    Get data from NOMIS API
+    Args: 
+        base_url: str: the base url for the API
+        dataset_params: dict: parameters for the dataset - e.g. table, date, geography
+        creds_params: dict: credentials for the API from the config file
+
+    Returns:
+        A polars dataframe, long format for Bronze layer.
+        Needs pivoting for tenures as cols
+    """
+    params = {**dataset_params, **creds_params}
+    url = base_url + '?' + urlencode(params)
+    return pl.read_csv(url)
+
 def clean_tenure(expr: pl.Expr, new_colname: str) -> pl.Expr:
     """
     Function for cleaning the tenure column
