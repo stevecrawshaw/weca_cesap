@@ -247,3 +247,23 @@
 2024-10-16 09:18:21,205 - INFO - Schema successfully extracted.
 2024-10-16 09:22:06,680 - INFO - Schema successfully extracted.
 2024-10-16 09:25:07,262 - INFO - Schema successfully extracted.
+2024-10-16 14:11:32,034 - INFO - ca_la_df with north somerset created
+2024-10-16 14:18:48,477 - INFO - Extraction successful: data\schema.json
+2024-10-16 14:22:32,225 - INFO - Schema successfully extracted.
+2024-10-16 14:41:37,780 - ERROR - File data\non-domestic-2021.zip does not exist.
+2024-10-16 14:42:11,874 - INFO - Extraction successful: data\epc_csv\non-domestic-2008-certificates.csv
+2024-10-16 14:42:12,008 - INFO - Extraction successful: data\epc_csv\non-domestic-2009-certificates.csv
+2024-10-16 14:42:12,106 - INFO - Extraction successful: data\epc_csv\non-domestic-2010-certificates.csv
+2024-10-16 14:42:12,228 - INFO - Extraction successful: data\epc_csv\non-domestic-2011-certificates.csv
+2024-10-16 14:42:12,371 - INFO - Extraction successful: data\epc_csv\non-domestic-2012-certificates.csv
+2024-10-16 14:42:12,485 - INFO - Extraction successful: data\epc_csv\non-domestic-2013-certificates.csv
+2024-10-16 14:42:12,586 - INFO - Extraction successful: data\epc_csv\non-domestic-2014-certificates.csv
+2024-10-16 14:42:12,679 - INFO - Extraction successful: data\epc_csv\non-domestic-2015-certificates.csv
+2024-10-16 14:42:12,775 - INFO - Extraction successful: data\epc_csv\non-domestic-2016-certificates.csv
+2024-10-16 14:42:12,884 - INFO - Extraction successful: data\epc_csv\non-domestic-2017-certificates.csv
+2024-10-16 14:42:13,028 - INFO - Extraction successful: data\epc_csv\non-domestic-2018-certificates.csv
+2024-10-16 14:42:13,164 - INFO - Extraction successful: data\epc_csv\non-domestic-2019-certificates.csv
+2024-10-16 14:42:13,274 - INFO - Extraction successful: data\epc_csv\non-domestic-2020-certificates.csv
+2024-10-16 14:42:13,426 - INFO - Extraction successful: data\epc_csv\non-domestic-2021-certificates.csv
+2024-10-16 14:42:13,639 - INFO - Extraction successful: data\epc_csv\non-domestic-2022-certificates.csv
+2024-10-16 14:42:13,894 - INFO - Extraction successful: data\epc_csv\non-domestic-2023-certificates.csv

@@ -47,7 +47,7 @@ params_base = {
 }
 
 # %%
-ca_la_df = get_ca.get_ca_la_df(2023, inc_ns = True) # include NS
+ca_la_df = get_ca.get_ca_la_df(2024, inc_ns = True) # include NS
 ca_la_codes = get_ca.get_ca_la_codes(ca_la_df)
 ladcds_in_cauths = ca_la_codes # this is the same as ca_la_codes RATIONALISE
 # ca_la_df.glimpse()
