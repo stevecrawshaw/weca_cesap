@@ -238,3 +238,12 @@
 2024-10-14 14:37:00,402 - INFO - Written 1467802 bytes to data/epc_csv/epc_E06000024.csv
 2024-10-14 14:37:00,960 - INFO - Written 0 bytes to data/epc_csv/epc_E06000024.csv
 2024-10-14 14:37:00,961 - INFO - EPC data successfully written to data/epc_csv/epc_E06000024.csv
+2024-10-16 08:40:23,815 - ERROR - File non-domestic-2021.zip does not exist.
+2024-10-16 08:40:43,209 - INFO - Extraction successful: non-domestic-2021-certificates.csv
+2024-10-16 08:46:05,589 - INFO - Extraction successful: data\non-domestic-2021-certificates.csv
+2024-10-16 09:01:55,471 - ERROR - File schema.json does not exist.
+2024-10-16 09:02:17,085 - ERROR - Error: name 'json' is not defined
+2024-10-16 09:02:32,281 - INFO - Schema successfully extracted.
+2024-10-16 09:18:21,205 - INFO - Schema successfully extracted.
+2024-10-16 09:22:06,680 - INFO - Schema successfully extracted.
+2024-10-16 09:25:07,262 - INFO - Schema successfully extracted.

@@ -6,7 +6,7 @@ import json
 import get_ca_data as get_ca # functions for retrieving CA \ common data
 import geopandas as gpd
 import pandas as pd
-import janitor.polars
+from janitor.polars import clean_names
 
 
 download_epc = True
@@ -65,28 +65,6 @@ ca_la_dft_lookup_df = get_ca.get_ca_la_dft_lookup(
     dft_csv_path = 'https://storage.googleapis.com/dft-statistics/road-traffic/downloads/data-gov-uk/local_authority_traffic.csv',
     la_list = la_list)
 # ca_la_dft_lookup_df.glimpse()
-
-# %%
-
-# postcode_file = get_ca.get_zipped_csv_file(url = "https://www.arcgis.com/sharing/rest/content/items/3770c5e8b0c24f1dbe6d2fc6b46a0b18/data",
-#                       file_folder_name = "postcode_lookup")
-# postcodes_df = get_ca.get_postcode_df(postcode_file, ca_la_codes)
-
-# %%
-# this is hit by the 2000 record limit too so use DL file
-# input_file = get_ca.get_geojson(url = "https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/LLSOA_Dec_2021_PWC_for_England_and_Wales_2022/FeatureServer/0/query",
-#                       destination_directory = "data\\geojson")
-
-# %%
-#ca_lsoa_codes = get_ca.get_ca_lsoa_codes(postcodes_df)
-
-# %% [markdown]
-# run cell below if not needing to update LSOA geodata (its expensive and crashes)
-
-# %%
-# if not download_lsoa:
-#     reproject_path = 'data/geojson/ca_lsoa_pwc_wgs84.geojson'
-#     reproject_lsoa_poly_path = 'data/geojson/ca_lsoa_poly_wgs84.geojson'
 
 # %%
 # if download_lsoa:
