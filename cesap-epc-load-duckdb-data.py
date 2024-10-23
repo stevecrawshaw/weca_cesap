@@ -9,6 +9,7 @@ import pandas as pd
 from janitor.polars import clean_names
 
 
+
 download_epc = True
 download_lsoa = True
 
@@ -19,27 +20,63 @@ download_lsoa = True
 # %% [markdown]
 ## Define the base urls for the ArcGIS API and some parameters
 # we get the 2011 LSOA data as these match to the IMD lsoa codes
+
 #%%
-base_url_lsoa_2021_centroids = f'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/LLSOA_Dec_2021_PWC_for_England_and_Wales_2022/FeatureServer/0/query?'
+esri_fs_base_url = 'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/'
+esri_fs_tail_url = 'FeatureServer/0/query'
+
+#%% [markdown]
+# Esri Featureserver paths
+# %%
+# this one is a zip file for all postcode centroids.
 base_url_pc_centroids_zip = "https://www.arcgis.com/sharing/rest/content/items/3700342d3d184b0d92eae99a78d9c7a3/data"
-base_url_2021_lsoa_polys = "https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/Lower_layer_Super_Output_Areas_December_2021_Boundaries_EW_BFC_V10/FeatureServer/0/query"
-base_url_2011_lsoa_polys = 'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/LSOA_Dec_2011_Boundaries_Generalised_Clipped_BGC_EW_V3/FeatureServer/0/query'
-base_url_lsoa_2021_lookups = 'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/LSOA21_WD24_LAD24_EW_LU/FeatureServer/0/query?'
-base_url_lsoa_2011_lookups = 'https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/LSOA01_LSOA11_LAD11_EW_LU_ddfe1cd1c2784c9b991cded95bc915a9/FeatureServer/0/query'
+
+base_url_lsoa_2021_centroids = get_ca.make_esri_fs_url(esri_fs_base_url,
+                                                "LLSOA_Dec_2021_PWC_for_England_and_Wales_2022/",
+                                                esri_fs_tail_url)
+
+base_url_2021_lsoa_polys = get_ca.make_esri_fs_url(esri_fs_base_url,
+                                            "Lower_layer_Super_Output_Areas_December_2021_Boundaries_EW_BFC_V10/",
+                                            esri_fs_tail_url)
+
+base_url_2011_lsoa_polys = get_ca.make_esri_fs_url(esri_fs_base_url,
+                                            "LSOA_Dec_2011_Boundaries_Generalised_Clipped_BGC_EW_V3/",
+                                            esri_fs_tail_url)
+
+base_url_lsoa_2021_lookups = get_ca.make_esri_fs_url(esri_fs_base_url,
+                                            "LSOA21_WD24_LAD24_EW_LU/",
+                                            esri_fs_tail_url)
+
+base_url_lsoa_2011_lookups = get_ca.make_esri_fs_url(esri_fs_base_url,
+                                            "LSOA01_LSOA11_LAD11_EW_LU_ddfe1cd1c2784c9b991cded95bc915a9/",
+                                            esri_fs_tail_url)
+
+base_url_lsoa_2011_lookups = get_ca.make_esri_fs_url(esri_fs_base_url,
+                                            "LSOA01_LSOA11_LAD11_EW_LU_ddfe1cd1c2784c9b991cded95bc915a9/",
+                                            esri_fs_tail_url)
+#%% [markdown]
+# Other paths
+
+#%%
 imd_data_path = 'https://github.com/humaniverse/IMD/raw/master/data-raw/imd_england_lsoa.csv'
 path_2011_poly_parquet = 'data/all_cas_lsoa_poly_2011.parquet'
 path_2021_poly_parquet = 'data/all_cas_lsoa_poly_2021.parquet'
 chunk_size = 100 # this is used in a a where clause to set the number of lsoa polys per api call
 nomis_ts054_url = "https://www.nomisweb.co.uk/api/v01/dataset/NM_2072_1.data.csv"
-#?date=latest&c2021_tenure_9=0,1001...1004,8,9996,9997&measures=20100&geography=TYPE151&select=GEOGRAPHY_NAME,GEOGRAPHY_CODE,C2021_TENURE_9_NAME,C2021_TENURE_9_SORTORDER,OBS_VALUE
+
+#%% [markdown]
+# Nomis parameters for the tenure data
+#%%
 ts054_params = {'date': ['latest'],
                 'c2021_tenure_9': ['0,1001...1004,8,9996,9997'],
                 'measures': ['20100'],
                 'geography': ['TYPE151'],
                 'select': ['GEOGRAPHY_NAME,GEOGRAPHY_CODE,C2021_TENURE_9_NAME,C2021_TENURE_9_SORTORDER,OBS_VALUE']
                 }
-nomis_params = get_ca.load_config('../config.yml').get('nomis')
-
+nomis_creds = get_ca.load_config('../config.yml').get('nomis')
+# %% [markdown]
+# ESRI FeatureServer parameters
+#%%
 params_base = {
     'outFields': '*',
     'outSR': 4326,
@@ -336,7 +373,7 @@ pc_centroids_q = pl.scan_csv('data/postcode_centroids.csv',
 
 #%%
 
-tenure_raw_df = get_ca.get_nomis_data(nomis_ts054_url, ts054_params, nomis_params)
+tenure_raw_df = get_ca.get_nomis_data(nomis_ts054_url, ts054_params, nomis_creds)
 
 #%%
 tenure_raw_df.glimpse()

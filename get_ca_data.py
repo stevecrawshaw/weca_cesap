@@ -4,7 +4,7 @@ import requests
 from requests.exceptions import HTTPError, RequestException, Timeout, ConnectionError
 import polars as pl
 from pathlib import Path
-from urllib.parse import urlencode, urlunparse
+from urllib.parse import urlencode, urljoin, urlunparse, urlparse
 import yaml
 import math
 import logging
@@ -33,6 +33,26 @@ logging.basicConfig(
 
 #%%
 
+def make_esri_fs_url(base_url: str,
+                     service_portion: str,
+                      tail_url: str) -> str:
+    """
+    Construct a valid URL for an Esri FeatureServer API call.
+    supports rational changing of url components when sources updated
+    """
+    joined_url = urljoin(base_url, f"{service_portion}{tail_url}")
+    parsed_url = urlparse(joined_url)
+    parsed_url_valid = all([parsed_url.scheme,
+                            parsed_url.netloc, 
+                            parsed_url.path
+                            ])
+    if parsed_url_valid:
+        return joined_url
+    else:
+        raise ValueError(f"Invalid URL: {parsed_url}")
+        return None
+
+#%%
 def download_zip(url: str, directory: str = "data", filename: str = None) -> str:
     """
     Downloads a zip file from the given URL and saves it to the specified directory with an optional custom filename.
@@ -280,11 +300,11 @@ def get_ca_la_df(year: int,
              )
         
         if inc_ns: # if North Somerset to be included add a line to the df
-            logging.info(f"ca_la_df with north somerset created")
+            logging.info("ca_la_df with north somerset created")
             return clean_ca_la_df.vstack(ns_line_df)
         
         else:
-            logging.info(f"ca_la_df without north somerset created")
+            logging.info("ca_la_df without north somerset created")
             return clean_ca_la_df
         
 def get_chunk_list(base_url: str, params_base: dict, max_records: int = 2000) -> list:
