@@ -155,7 +155,8 @@ delete_zip_file(zip_file_path = zipped_file_path)
 #%%
 pl.read_csv(csv_file, n_rows=1000).glimpse()
 
-
+#%%
+csv_file = "data/ONSPD_NOV_2023_UK.csv"
 
 #%%
 schema_columns = {
@@ -336,7 +337,8 @@ con.sql(query)
 #%%
 
 con.sql("SHOW TABLES;")
-
+#%%
+con.close()
 #%%
 
 con.sql("SELECT COUNT(PCDS) FROM postcode_centroids_cauth;")
