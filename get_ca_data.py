@@ -408,11 +408,12 @@ def get_flat_data(offset: int,
                                     **params_other},
                                     stream = True) as r:
             r.raise_for_status()
+            print(r.url)
             features = r.json().get('features')
             features_df = (
                 pl.DataFrame(features)
                 .unnest('attributes')
-                .drop('GlobalID')
+                #.drop('GlobalID')
                 )
     except requests.RequestException as e:
         logging.error(f"API request error: from {base_url} {e}")
@@ -737,3 +738,4 @@ def make_n_construction_age(df: pl.DataFrame, new_colname: str) -> pl.DataFrame:
 
     .drop('age_int', '_8_chars', 'age_char', 'lower', 'upper')
     )
+# %%

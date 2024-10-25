@@ -1,0 +1,12 @@
+2024-10-25 14:32:57,296 - INFO - ca_la_df with north somerset created
+2024-10-25 14:44:07,351 - INFO - ca_la_df with north somerset created
+2024-10-25 14:48:26,255 - INFO - ca_la_df with north somerset created
+2024-10-25 15:07:03,183 - INFO - ca_la_df with north somerset created
+2024-10-25 15:33:35,193 - INFO - Starting download from URL: https://www.arcgis.com/sharing/rest/content/items/3700342d3d184b0d92eae99a78d9c7a3/data
+2024-10-25 15:33:35,198 - INFO - Saving zip file to: data\postcode_centroids.zip
+2024-10-25 15:33:48,941 - INFO - Download completed: data\postcode_centroids.zip
+2024-10-25 15:34:11,965 - INFO - Extracting CSV from zip file: data\postcode_centroids.zip
+2024-10-25 15:34:11,973 - INFO - Extracting CSV to: data\ONSPD_NOV_2023_UK.csv
+2024-10-25 15:34:14,484 - INFO - Extraction completed: data\ONSPD_NOV_2023_UK.csv
+2024-10-25 15:34:19,873 - INFO - Deleting zip file: data\postcode_centroids.zip
+2024-10-25 15:34:19,889 - INFO - Deleted zip file: data\postcode_centroids.zip

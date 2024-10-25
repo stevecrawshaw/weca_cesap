@@ -108,6 +108,10 @@ ca_la_dft_lookup_df = get_ca.get_ca_la_dft_lookup(
 lookups_2021_chunk_list = get_ca.get_chunk_list(base_url_lsoa_2021_lookups,
                                     params_base,
                                     max_records = 1000)
+#%%
+#x = get_ca.get_flat_data(200, params_base, params_other={'where':'1=1'}, base_url = base_url_lsoa_2021_lookups)
+print(base_url_lsoa_2021_lookups)
+#%%
 # list of pl.dataframes of the lookups data in cauths
 lookups_2021_pldf_list = [get_ca.get_flat_data(chunk,
                                 params_base,
@@ -115,7 +119,7 @@ lookups_2021_pldf_list = [get_ca.get_flat_data(chunk,
                                 base_url = base_url_lsoa_2021_lookups)
                     for chunk
                     in lookups_2021_chunk_list]
-
+#%%
 lookups_2021_pldf = pl.concat(lookups_2021_pldf_list, how='vertical_relaxed')
 #%%
 lsoas_in_cauths_iter = (lookups_2021_pldf
@@ -252,7 +256,7 @@ cols_schema_nondom = {
     }
 
 # %% [markdown]
-### download from https://epc.opendatacommunities.org/downloads/non-domestic
+# download from https://epc.opendatacommunities.org/downloads/non-domestic
 # %%
 epc_non_domestic = (pl.scan_csv(
     'data/all-non-domestic-certificates-single-file/certificates.csv',
