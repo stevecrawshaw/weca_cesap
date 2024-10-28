@@ -185,6 +185,104 @@ def load_config(config_path: str) -> Dict:
         logging.error(f"Config file not found: {config_path}")
         raise
 
+def make_zipfile_list(ca_la_df):
+    return (ca_la_df
+            .with_columns(pl.col('ladnm').str.replace_all(', |\\. | ', '-').alias('la'))
+            .select([pl.concat_str(
+                pl.lit('https://epc.opendatacommunities.org/api/v1/files/'),
+                pl.lit('domestic-'),
+                pl.col('ladcd'),
+                pl.lit('-'),
+                pl.col('la'),
+                pl.lit('.zip')).alias('url'),
+                pl.col('ladcd')])
+            ).to_dicts()
+
+def dl_bulk_epc_zip(la_zipfile_list, path = "data/epc_bulk_zips/"):
+    """
+    Downloads bulk EPC (Energy Performance Certificate) zip files for a list of local authorities.
+
+    This function reads a configuration file to get the EPC authentication token, then iterates over
+    a list of local authority zip file information, downloading each zip file and saving it to the 
+    local filesystem.
+
+    Args:
+        la_zipfile_list (list): A list of dictionaries, each containing:
+            - 'url' (str): The URL to download the zip file from.
+            - 'ladcd' (str): The local authority district code used to name the downloaded zip file.
+
+    Raises:
+        requests.exceptions.RequestException: If there is an issue with the HTTP request.
+        IOError: If there is an issue writing the file to the local filesystem.
+
+    Example:
+        la_zipfile_list = [
+            {'url': 'http://example.com/file1.zip', 'ladcd': 'E07000026'},
+            {'url': 'http://example.com/file2.zip', 'ladcd': 'E07000027'}
+        ]
+        dl_bulk_epc_zip(la_zipfile_list)
+    """
+    try:
+        config = load_config('../config.yml')
+        epc_key = config['epc']['auth_token']
+    except Exception as e:
+        logging.error(f"Error loading config: {e}")
+        raise
+
+    for la in la_zipfile_list:
+        url = la['url']
+        headers = {
+            "Authorization": f"Basic {epc_key}"
+        }
+        try:
+            response = requests.get(url, headers=headers, allow_redirects=True)
+            response.raise_for_status()
+        except requests.RequestException as e:
+            logging.error(f"Error downloading {la['ladcd']}.zip from {url}: {e}")
+            continue
+
+        try:
+            with open(f"{path}{la['ladcd']}.zip", "wb") as file:
+                file.write(response.content)
+            logging.info(f"Downloaded {la['ladcd']}.zip")
+        except IOError as e:
+            logging.error(f"Error writing {la['ladcd']}.zip to filesystem: {e}")
+
+def extract_and_rename_csv_from_zips(zip_folder: str = "data/epc_bulk_zips") -> None:
+    """
+    Extract the file called certificates.csv from each zip file in the specified folder
+    and rename the certificates.csv file to the name of the zip file (e.g., E06000001.zip
+    will result in E06000001.csv). The CSV files will be saved in the same folder.
+
+    Args:
+        zip_folder (str): The folder containing the zip files. Defaults to "data/epc_bulk_zips".
+    """
+    zip_folder_path = Path(zip_folder)
+    
+    # Ensure the folder exists
+    if not zip_folder_path.exists():
+        logging.error(f"Zip folder '{zip_folder}' does not exist.")
+        raise FileNotFoundError(f"Zip folder '{zip_folder}' does not exist.")
+    
+    # Iterate over all zip files in the folder
+    for zip_file in zip_folder_path.glob("*.zip"):
+        try:
+            with zipfile.ZipFile(zip_file, 'r') as z:
+                # Check if certificates.csv exists in the zip file
+                if "certificates.csv" in z.namelist():
+                    # Extract certificates.csv and rename it
+                    extracted_csv_path = zip_folder_path / f"{zip_file.stem}.csv"
+                    with z.open("certificates.csv") as source, extracted_csv_path.open('wb') as target:
+                        shutil.copyfileobj(source, target)
+                    logging.info(f"Extracted and renamed {zip_file} to {extracted_csv_path}")
+                else:
+                    logging.warning(f"No certificates.csv found in {zip_file}")
+        except zipfile.BadZipFile:
+            logging.error(f"Bad zip file: {zip_file}")
+        except Exception as e:
+            logging.error(f"Error processing {zip_file}: {e}")
+
+
 def delete_all_csv_files(folder_path):
     # Convert the folder path to a Path object
     folder = Path(folder_path)

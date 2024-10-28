@@ -7,7 +7,9 @@ import get_ca_data as get_ca # functions for retrieving CA \ common data
 import geopandas as gpd
 import pandas as pd
 from janitor.polars import clean_names
-
+import glob
+import os
+from epc_schema import schema_cols # schema for the EPC certificates
 
 
 download_epc = True
@@ -88,12 +90,75 @@ ca_la_df = get_ca.get_ca_la_df(2024, inc_ns = True) # include NS
 ca_la_codes = get_ca.get_ca_la_codes(ca_la_df)
 ladcds_in_cauths = ca_la_codes # this is the same as ca_la_codes RATIONALISE
 # ca_la_df.glimpse()
-
 # %%
 la_list = (ca_la_df['ladcd']) #includes north somerset
 ladnm = tuple(ca_la_df['ladnm'].to_list())
 f'There are {str(la_list.shape)[1:3]} Local Authorities in Combined Authorities'
+#%%
 
+### EXPERIMENT WITH BULK DOWNLOADS
+# https://epc.opendatacommunities.org/files/domestic-E06000023-Bristol-City-of.zip
+#%%
+
+# MOVE TO DATABASE BIT - THE END
+# DO THE SAME PROCESS FOR THE NON DOMESTIC EPC DATA
+# INTEGRATE THE UPDATE PROCESS - USE UPSERT TO UPDATE THE DATABASE
+
+la_zipfile_list = get_ca.make_zipfile_list(ca_la_df)
+
+#%%
+            
+get_ca.dl_bulk_epc_zip(la_zipfile_list)
+#%%
+get_ca.extract_and_rename_csv_from_zips("data/epc_bulk_zips")
+
+#%%
+
+con = duckdb.connect('data/epc.duckdb')
+
+#%%
+# create the certificates table according to the schema in the sql file
+with open('certificates_schema.sql', 'r') as f:
+    con.execute(f.read())
+
+#%%
+csv_files = glob.glob('data/epc_bulk_zips/*.csv')
+for file in csv_files:
+    try:
+        print(f"Importing {os.path.basename(file)}...")
+        con.execute("""
+                INSERT INTO certificates 
+                SELECT * FROM read_csv(?, 
+                                     header=true,
+                                     auto_detect=false,
+                                     columns= ?,
+                                     parallel=true,
+                                     filename = true)
+            """, [file, schema_cols])
+    except Exception as e:
+        print(f"Error importing {file}: {str(e)}") 
+
+#%%
+# Verify the import
+row_count = con.execute("SELECT COUNT(*) FROM certificates").fetchone()[0]
+print(f"Total rows imported: {row_count}")
+
+
+#%%
+
+con.sql("SUMMARIZE certificates")
+
+#%%
+# Close the connection
+con.close()
+#%%
+
+bulk_files = glob.glob('data/epc_bulk_zips/*.*')
+
+for file in bulk_files:
+    get_ca.delete_file(file)
+
+#%%
 # %% [markdown]
 # Get the lookup table that relates DFT Local authority ID's in the Combined authorities to ONS LA codes
 

@@ -1,5 +1,4 @@
 #%%
-
 import polars as pl
 import duckdb # version 1.1.1
 import requests
