@@ -9,7 +9,8 @@ import pandas as pd
 from janitor.polars import clean_names
 import glob
 import os
-from epc_schema import schema_cols # schema for the EPC certificates
+from datetime import datetime
+from epc_schema import schema_cols, cols_schema_adjusted_polars # schema for the EPC certificates
 
 
 download_epc = True
@@ -103,61 +104,6 @@ f'There are {str(la_list.shape)[1:3]} Local Authorities in Combined Authorities'
 # MOVE TO DATABASE BIT - THE END
 # DO THE SAME PROCESS FOR THE NON DOMESTIC EPC DATA
 # INTEGRATE THE UPDATE PROCESS - USE UPSERT TO UPDATE THE DATABASE
-
-la_zipfile_list = get_ca.make_zipfile_list(ca_la_df)
-
-#%%
-            
-get_ca.dl_bulk_epc_zip(la_zipfile_list)
-#%%
-get_ca.extract_and_rename_csv_from_zips("data/epc_bulk_zips")
-
-#%%
-
-con = duckdb.connect('data/epc.duckdb')
-
-#%%
-# create the certificates table according to the schema in the sql file
-with open('certificates_schema.sql', 'r') as f:
-    con.execute(f.read())
-
-#%%
-csv_files = glob.glob('data/epc_bulk_zips/*.csv')
-for file in csv_files:
-    try:
-        print(f"Importing {os.path.basename(file)}...")
-        con.execute("""
-                INSERT INTO certificates 
-                SELECT * FROM read_csv(?, 
-                                     header=true,
-                                     auto_detect=false,
-                                     columns= ?,
-                                     parallel=true,
-                                     filename = true)
-            """, [file, schema_cols])
-    except Exception as e:
-        print(f"Error importing {file}: {str(e)}") 
-
-#%%
-# Verify the import
-row_count = con.execute("SELECT COUNT(*) FROM certificates").fetchone()[0]
-print(f"Total rows imported: {row_count}")
-
-
-#%%
-
-con.sql("SUMMARIZE certificates")
-
-#%%
-# Close the connection
-con.close()
-#%%
-
-bulk_files = glob.glob('data/epc_bulk_zips/*.*')
-
-for file in bulk_files:
-    get_ca.delete_file(file)
-
 #%%
 # %% [markdown]
 # Get the lookup table that relates DFT Local authority ID's in the Combined authorities to ONS LA codes
@@ -300,32 +246,11 @@ get_ca.delete_zip_file(zip_file_path = zipped_file_path)
 # %% [markdown]
     # Now for the EPC data
 # %%
-cols_schema_nondom = {
-    'LMK_KEY': pl.Utf8,
-    'POSTCODE': pl.Utf8,
-    'BUILDING_REFERENCE_NUMBER': pl.Int64,
-    'ASSET_RATING': pl.Int64,
-    'ASSET_RATING_BAND': pl.Utf8,
-    'PROPERTY_TYPE': pl.Utf8,
-    'LOCAL_AUTHORITY': pl.Utf8,
-    'CONSTITUENCY': pl.Utf8,
-    'TRANSACTION_TYPE': pl.Utf8,
-    'STANDARD_EMISSIONS': pl.Float64,
-    'TYPICAL_EMISSIONS': pl.Float64,
-    'TARGET_EMISSIONS': pl.Float64,
-    'BUILDING_EMISSIONS': pl.Float64,
-    'BUILDING_LEVEL': pl.Int64,
-    'RENEWABLE_SOURCES': pl.Utf8,
-    'LODGEMENT_DATETIME': pl.Utf8,
-    'UPRN': pl.Utf8
-    }
 
-# %% [markdown]
-# download from https://epc.opendatacommunities.org/downloads/non-domestic
 # %%
 epc_non_domestic = (pl.scan_csv(
     'data/all-non-domestic-certificates-single-file/certificates.csv',
-    schema = cols_schema_nondom,
+    schema = cols_schema_adjusted_polars,
 
 )
 .filter(pl.col('LOCAL_AUTHORITY').is_in(la_list.to_list()))
@@ -335,113 +260,17 @@ epc_non_domestic = (pl.scan_csv(
 ).collect()
 
 # %%
-# cols_schema_adjusted this schema is for the csv files retrieved using the epc API
-cols_schema_adjusted = {
- 'lmk-key': pl.Utf8,
- 'postcode': pl.Utf8,
- 'local-authority': pl.Utf8,
- 'property-type': pl.Utf8,
- 'lodgement-datetime': pl.Utf8,
- 'transaction-type': pl.Utf8,
- 'tenure': pl.Utf8,
- 'mains-gas-flag': pl.Utf8,
- 'hot-water-energy-eff': pl.Utf8,
- 'windows-description': pl.Utf8,
- 'windows-energy-eff': pl.Utf8,
- 'walls-description': pl.Utf8,
- 'walls-energy-eff': pl.Utf8,
- 'roof-description': pl.Utf8,
- 'roof-energy-eff': pl.Utf8,
- 'mainheat-description': pl.Utf8,
- 'mainheat-energy-eff': pl.Utf8,
- 'mainheat-env-eff': pl.Utf8,
- 'main-heating-controls': pl.Utf8,
- 'mainheatcont-description': pl.Utf8,
- 'mainheatc-energy-eff': pl.Utf8,
- 'main-fuel': pl.Utf8,
- 'solar-water-heating-flag': pl.Utf8,
- 'construction-age-band': pl.Utf8,
- 'current-energy-rating': pl.Utf8,
- 'potential-energy-rating': pl.Utf8,
- 'current-energy-efficiency': pl.Utf8,
- 'potential-energy-efficiency': pl.Utf8,
- 'built-form': pl.Utf8,
- 'constituency': pl.Utf8,
- 'floor-description': pl.Utf8,
- 'environment-impact-current': pl.Int64,
- 'environment-impact-potential': pl.Int64,
- 'energy-consumption-current': pl.Int64,
- 'energy-consumption-potential': pl.Int64,
- 'co2-emiss-curr-per-floor-area': pl.Int64,
- 'co2-emissions-current': pl.Float64,
- 'co2-emissions-potential': pl.Float64,
- 'lighting-cost-current': pl.Int64,
- 'lighting-cost-potential': pl.Int64,
- 'heating-cost-current': pl.Int64,
- 'heating-cost-potential': pl.Int64,
- 'hot-water-cost-current': pl.Int64,
- 'hot-water-cost-potential': pl.Int64,
- 'total-floor-area': pl.Float64,
- 'number-habitable-rooms': pl.Int64,
- 'number-heated-rooms': pl.Int64,
- 'photo-supply': pl.Float64,
- 'uprn': pl.Int64,
- 'building-reference-number': pl.Int64}
+# cols_schema_adjusted_polars#
+# this schema is for the csv files retrieved using the epc API
+
 
 # %%
-# Only run this if you are updating the EPC data from the opendatacommunities API
-# THIS WILL TAKE AT LEAST 2 HOURS TO RUN!!!
-# could do with tqdm in here
-from_date_dict = get_ca.get_epc_from_date()
+# SECTION BELOW IS FOR THE UPDATE ROUTINE ONLY
 if not download_epc:
-    print('Not downloading EPC data')
-else:
-    get_ca.delete_all_csv_files('data/epc_csv')
-    [get_ca.get_epc_csv(la,
-                        from_date = from_date_dict)
-                        for la 
-                        in la_list]
-
-
-# %%
-epc_domestic = get_ca.ingest_dom_certs_csv(la_list, cols_schema_adjusted)
-epc_domestic.glimpse()
-# %%
-epc_domestic_df = ((get_ca.wrangle_epc(certs_df = epc_domestic)
-                   .with_columns(pl.col('tenure')
-                                 .pipe(get_ca.clean_tenure, 'tenure_epc')))
-                   .pipe(get_ca.make_n_construction_age, 'n_nominal_construction_date')
-                   )
-epc_domestic_df.glimpse()
-
-# %%
-epc_non_domestic_df = get_ca.wrangle_epc(epc_non_domestic)
-epc_non_domestic_df.glimpse()
-
-# %%
-del epc_domestic, epc_non_domestic
-
-# %% [markdown]
-# Collect centroids - here to stop crash
-
-# %%
-pc_centroids_q = pl.scan_csv('data/postcode_centroids.csv',
-                             dtypes={
-                                 'RU11IND': pl.Utf8,
-                                 'x': pl.Float64,
-                                 'y': pl.Float64
-                                 })
-# pc_centroids_df.head()
-
-
-# %% [markdown]
-### Tenure - ts054 from NOMIS - slightly cleaned - remove csv header 
+    from_date_dict = get_ca.get_epc_from_date()
+    epc_update_pldf = get_ca.make_epc_update_pldf(la_list, from_date_dict)
 #%%
-
-
-
-#%%
-
+# TENURE
 tenure_raw_df = get_ca.get_nomis_data(nomis_ts054_url, ts054_params, nomis_creds)
 
 #%%
@@ -471,7 +300,6 @@ ca_tenure_lsoa = (pl.scan_csv('data/ts054_tenure_nomis.csv')
 # %%
 ca_tenure_lsoa.glimpse()
 
-
 # %% [markdown]
 # Load the data into a duckDB data base
 
@@ -495,8 +323,6 @@ try:
     con.execute('CREATE UNIQUE INDEX lsoacd_tenure_idx ON ca_tenure_lsoa_tbl (lsoacd)')
     con.execute('CREATE OR REPLACE TABLE ca_la_tbl AS SELECT * FROM ca_la_df')
     con.execute('CREATE OR REPLACE TABLE imd_tbl AS SELECT * FROM imd_df')
-    # con.execute('CREATE OR REPLACE TABLE postcodes_tbl AS SELECT * FROM postcodes_df')
-    # con.execute('CREATE UNIQUE INDEX postcode_idx ON postcodes_tbl (postcode)')
     con.execute('CREATE OR REPLACE TABLE postcode_centroids_tbl AS SELECT * FROM pc_centroids_df')
     con.execute('CREATE UNIQUE INDEX postcode_centroids_idx ON postcode_centroids_tbl (PCDS)')
     con.execute('CREATE OR REPLACE TABLE epc_non_domestic_tbl AS SELECT * FROM epc_non_domestic_df')
@@ -512,8 +338,54 @@ except Exception as e:
 # %% [markdown]
 # Have to do the domestic epc's outside the transaction block otherwise memory fail
 
-# %%
-del epc_non_domestic_df, pc_centroids_df
+la_zipfile_list = get_ca.make_zipfile_list(ca_la_df)
+
+#%%
+            
+get_ca.dl_bulk_epc_zip(la_zipfile_list)
+#%%
+get_ca.extract_and_rename_csv_from_zips("data/epc_bulk_zips")
+
+#%%
+# create the certificates table according to the schema in the sql file
+with open('certificates_schema.sql', 'r') as f:
+    con.execute(f.read())
+
+#%%
+csv_files = glob.glob('data/epc_bulk_zips/*.csv')
+for file in csv_files:
+    try:
+        print(f"Importing {os.path.basename(file)}...")
+        con.execute("""
+                INSERT INTO certificates 
+                SELECT * FROM read_csv(?, 
+                                     header=true,
+                                     auto_detect=false,
+                                     columns= ?,
+                                     parallel=true,
+                                     filename = true)
+            """, [file, schema_cols])
+    except Exception as e:
+        print(f"Error importing {file}: {str(e)}") 
+
+#%%
+# Verify the import
+row_count = con.execute("SELECT COUNT(*) FROM certificates").fetchone()[0]
+print(f"Total rows imported: {row_count}")
+
+
+#%%
+
+con.sql("SUMMARIZE certificates")
+
+#%%
+
+bulk_files = glob.glob('data/epc_bulk_zips/*.*')
+
+for file in bulk_files:
+    get_ca.delete_file(file)
+
+
 #%%
 # the query to create the view for epc_lep_domestic_ods_vw
 create_epc_domestic_view_qry = '''
@@ -615,7 +487,8 @@ con.execute('CREATE UNIQUE INDEX uprn_idx ON epc_domestic_tbl (uprn)')
 con.execute(create_epc_domestic_view_qry)
 con.execute(create_epc_non_domestic_view_qry)
 # %%
-del epc_domestic_df, ca_tenure_lsoa, ca_lsoa_codes
+del ca_tenure_lsoa
+
 # %%
 # temporary files to delete
 get_ca.delete_file(path_2011_poly_parquet)

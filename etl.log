@@ -674,3 +674,285 @@
 2024-10-28 15:42:11,906 - INFO - File deleted: data/epc_bulk_zips\E08000036.zip
 2024-10-28 15:42:11,909 - INFO - File deleted: data/epc_bulk_zips\E08000037.csv
 2024-10-28 15:42:11,918 - INFO - File deleted: data/epc_bulk_zips\E08000037.zip
+2024-10-29 09:18:18,289 - INFO - ca_la_df with north somerset created
+2024-10-29 09:22:43,741 - ERROR - API request error: HTTPSConnectionPool(host='epc.opendatacommunities.org', port=443): Max retries exceeded with url: /api/v1/domestic/search?size=5000&local-authority=E08000001&from-month=6&from-year=2024&to-month=9&to-year=2024 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x000002BC90BD1250>: Failed to resolve 'epc.opendatacommunities.org' (Name or service not known: epc.opendatacommunities.org using 1 resolver(s))"))
+2024-10-29 09:30:47,230 - INFO - Created polars dataframe 1688986 bytes for E08000001
+2024-10-29 09:30:59,456 - INFO - Created polars dataframe 1306121 bytes for E08000002
+2024-10-29 09:31:19,138 - INFO - Created polars dataframe 3291242 bytes for E08000003
+2024-10-29 09:31:33,840 - INFO - Created polars dataframe 1238184 bytes for E08000004
+2024-10-29 09:31:44,940 - INFO - Created polars dataframe 1160769 bytes for E08000005
+2024-10-29 09:31:57,489 - INFO - Created polars dataframe 1781367 bytes for E08000006
+2024-10-29 09:32:07,171 - INFO - Created polars dataframe 1416939 bytes for E08000007
+2024-10-29 09:32:17,806 - INFO - Created polars dataframe 1170482 bytes for E08000008
+2024-10-29 09:32:41,973 - INFO - Created polars dataframe 1184364 bytes for E08000009
+2024-10-29 09:32:51,790 - INFO - Created polars dataframe 1619322 bytes for E08000010
+2024-10-29 09:33:03,523 - INFO - Created polars dataframe 1291962 bytes for E08000016
+2024-10-29 09:34:06,966 - INFO - Created polars dataframe 1726528 bytes for E08000017
+2024-10-29 09:34:59,090 - INFO - Created polars dataframe 1358347 bytes for E08000018
+2024-10-29 09:35:29,389 - INFO - Created polars dataframe 3290964 bytes for E08000019
+2024-10-29 09:36:39,190 - ERROR - API request error: Stream 1 was reset by remote peer. Reason: 0x2.
+2024-10-29 11:31:54,386 - INFO - ca_la_df with north somerset created
+2024-10-29 11:32:42,368 - INFO - Created polars dataframe 1688986 bytes for E08000001
+2024-10-29 11:32:44,100 - INFO - Created polars dataframe 1306121 bytes for E08000002
+2024-10-29 11:32:47,418 - INFO - Created polars dataframe 3291242 bytes for E08000003
+2024-10-29 11:32:48,902 - INFO - Created polars dataframe 1238184 bytes for E08000004
+2024-10-29 11:32:50,330 - INFO - Created polars dataframe 1160769 bytes for E08000005
+2024-10-29 11:32:51,993 - INFO - Created polars dataframe 1781367 bytes for E08000006
+2024-10-29 11:32:53,637 - INFO - Created polars dataframe 1416939 bytes for E08000007
+2024-10-29 11:32:54,890 - INFO - Created polars dataframe 1170482 bytes for E08000008
+2024-10-29 11:32:56,209 - INFO - Created polars dataframe 1184364 bytes for E08000009
+2024-10-29 11:32:57,786 - INFO - Created polars dataframe 1619322 bytes for E08000010
+2024-10-29 11:32:59,052 - INFO - Created polars dataframe 1291962 bytes for E08000016
+2024-10-29 11:33:00,535 - INFO - Created polars dataframe 1726528 bytes for E08000017
+2024-10-29 11:33:01,852 - INFO - Created polars dataframe 1358347 bytes for E08000018
+2024-10-29 11:33:04,151 - INFO - Created polars dataframe 3290964 bytes for E08000019
+2024-10-29 11:33:06,684 - INFO - Created polars dataframe 3587630 bytes for E08000032
+2024-10-29 11:33:08,008 - INFO - Created polars dataframe 1265570 bytes for E08000033
+2024-10-29 11:33:09,595 - INFO - Created polars dataframe 1988354 bytes for E08000034
+2024-10-29 11:33:12,395 - INFO - Created polars dataframe 4497889 bytes for E08000035
+2024-10-29 11:33:13,969 - INFO - Created polars dataframe 1847180 bytes for E08000036
+2024-10-29 11:33:14,797 - INFO - Created polars dataframe 516630 bytes for E06000006
+2024-10-29 11:33:15,875 - INFO - Created polars dataframe 878752 bytes for E08000011
+2024-10-29 11:33:17,832 - INFO - Created polars dataframe 3065472 bytes for E08000012
+2024-10-29 11:33:18,933 - INFO - Created polars dataframe 954241 bytes for E08000013
+2024-10-29 11:33:20,224 - INFO - Created polars dataframe 1535532 bytes for E08000014
+2024-10-29 11:33:21,761 - INFO - Created polars dataframe 1967602 bytes for E08000015
+2024-10-29 11:33:22,791 - INFO - Created polars dataframe 904307 bytes for E06000001
+2024-10-29 11:33:23,790 - INFO - Created polars dataframe 830780 bytes for E06000002
+2024-10-29 11:33:24,717 - INFO - Created polars dataframe 744407 bytes for E06000003
+2024-10-29 11:33:25,925 - INFO - Created polars dataframe 1215697 bytes for E06000004
+2024-10-29 11:33:26,906 - INFO - Created polars dataframe 711280 bytes for E06000005
+2024-10-29 11:33:30,037 - INFO - Created polars dataframe 4618210 bytes for E08000025
+2024-10-29 11:33:31,708 - INFO - Created polars dataframe 2232000 bytes for E08000026
+2024-10-29 11:33:34,555 - INFO - Created polars dataframe 4479424 bytes for E08000027
+2024-10-29 11:33:36,474 - INFO - Created polars dataframe 2515212 bytes for E08000028
+2024-10-29 11:33:37,578 - INFO - Created polars dataframe 1009650 bytes for E08000029
+2024-10-29 11:33:38,748 - INFO - Created polars dataframe 1247913 bytes for E08000030
+2024-10-29 11:33:39,987 - INFO - Created polars dataframe 1515013 bytes for E08000031
+2024-10-29 11:33:41,194 - INFO - Created polars dataframe 1208125 bytes for E06000031
+2024-10-29 11:33:42,217 - INFO - Created polars dataframe 897187 bytes for E07000008
+2024-10-29 11:33:43,149 - INFO - Created polars dataframe 627241 bytes for E07000009
+2024-10-29 11:33:44,202 - INFO - Created polars dataframe 956833 bytes for E07000010
+2024-10-29 11:33:45,341 - INFO - Created polars dataframe 1088472 bytes for E07000011
+2024-10-29 11:33:46,476 - INFO - Created polars dataframe 1063970 bytes for E07000012
+2024-10-29 11:33:47,894 - INFO - Created polars dataframe 1623023 bytes for E06000022
+2024-10-29 11:33:49,871 - INFO - Created polars dataframe 2852803 bytes for E06000023
+2024-10-29 11:33:51,314 - INFO - Created polars dataframe 1790249 bytes for E06000025
+2024-10-29 11:33:52,527 - INFO - Created polars dataframe 1338961 bytes for E06000014
+2024-10-29 11:33:55,158 - INFO - Created polars dataframe 4161574 bytes for E06000065
+2024-10-29 11:33:56,504 - INFO - Created polars dataframe 1620674 bytes for E06000015
+2024-10-29 11:33:57,859 - INFO - Created polars dataframe 1605891 bytes for E06000018
+2024-10-29 11:33:58,976 - INFO - Created polars dataframe 968887 bytes for E07000032
+2024-10-29 11:33:59,825 - INFO - Created polars dataframe 452628 bytes for E07000033
+2024-10-29 11:34:00,736 - INFO - Created polars dataframe 682215 bytes for E07000034
+2024-10-29 11:34:01,633 - INFO - Created polars dataframe 464459 bytes for E07000035
+2024-10-29 11:34:02,617 - INFO - Created polars dataframe 795949 bytes for E07000036
+2024-10-29 11:34:03,434 - INFO - Created polars dataframe 506666 bytes for E07000037
+2024-10-29 11:34:04,284 - INFO - Created polars dataframe 658215 bytes for E07000038
+2024-10-29 11:34:05,279 - INFO - Created polars dataframe 906461 bytes for E07000039
+2024-10-29 11:34:06,229 - INFO - Created polars dataframe 938439 bytes for E07000170
+2024-10-29 11:34:07,186 - INFO - Created polars dataframe 765523 bytes for E07000171
+2024-10-29 11:34:08,234 - INFO - Created polars dataframe 881141 bytes for E07000172
+2024-10-29 11:34:09,151 - INFO - Created polars dataframe 769062 bytes for E07000173
+2024-10-29 11:34:10,066 - INFO - Created polars dataframe 639767 bytes for E07000174
+2024-10-29 11:34:10,992 - INFO - Created polars dataframe 742525 bytes for E07000175
+2024-10-29 11:34:11,950 - INFO - Created polars dataframe 772863 bytes for E07000176
+2024-10-29 11:34:14,664 - INFO - Created polars dataframe 3656994 bytes for E06000047
+2024-10-29 11:34:16,320 - INFO - Created polars dataframe 1966952 bytes for E06000057
+2024-10-29 11:34:17,755 - INFO - Created polars dataframe 1926822 bytes for E08000021
+2024-10-29 11:34:19,034 - INFO - Created polars dataframe 1274806 bytes for E08000022
+2024-10-29 11:34:20,035 - INFO - Created polars dataframe 706148 bytes for E08000023
+2024-10-29 11:34:21,418 - INFO - Created polars dataframe 1163798 bytes for E08000024
+2024-10-29 11:34:22,684 - INFO - Created polars dataframe 1124496 bytes for E08000037
+2024-10-29 11:34:24,084 - INFO - Created polars dataframe 1467802 bytes for E06000024
+2024-10-29 11:40:56,651 - INFO - ca_la_df with north somerset created
+2024-10-29 11:41:28,718 - INFO - Created polars dataframe 1688986 bytes for E08000001
+2024-10-29 11:43:56,284 - INFO - Created polars dataframe 1688986 bytes for E08000001
+2024-10-29 11:44:42,267 - INFO - ca_la_df with north somerset created
+2024-10-29 11:45:03,636 - INFO - Created polars dataframe 1688986 bytes for E08000001
+2024-10-29 11:46:37,965 - INFO - ca_la_df with north somerset created
+2024-10-29 11:47:06,129 - INFO - Created polars dataframe 1688986 bytes for E08000001
+2024-10-29 11:57:31,388 - INFO - ca_la_df with north somerset created
+2024-10-29 12:01:19,867 - INFO - ca_la_df with north somerset created
+2024-10-29 12:02:39,600 - INFO - ca_la_df with north somerset created
+2024-10-29 12:02:49,682 - INFO - Retrieved 1858 rows for E08000001
+2024-10-29 12:02:50,236 - INFO - Retrieved 0 rows for E08000001
+2024-10-29 12:04:48,750 - INFO - ca_la_df with north somerset created
+2024-10-29 12:05:05,817 - INFO - Retrieved 1858 rows for E08000001
+2024-10-29 12:05:06,346 - INFO - Retrieved 0 rows for E08000001
+2024-10-29 12:10:18,144 - INFO - ca_la_df with north somerset created
+2024-10-29 12:10:37,067 - INFO - Retrieved 1858 rows for E08000001
+2024-10-29 12:10:38,469 - INFO - Retrieved 1858 rows for E08000001
+2024-10-29 12:10:40,009 - INFO - Retrieved 1858 rows for E08000001
+2024-10-29 12:10:41,482 - INFO - Retrieved 1858 rows for E08000001
+2024-10-29 12:10:43,083 - INFO - Retrieved 1858 rows for E08000001
+2024-10-29 12:10:44,484 - INFO - Retrieved 1858 rows for E08000001
+2024-10-29 12:10:45,904 - INFO - Retrieved 1858 rows for E08000001
+2024-10-29 12:10:47,244 - INFO - Retrieved 1858 rows for E08000001
+2024-10-29 12:10:48,634 - INFO - Retrieved 1858 rows for E08000001
+2024-10-29 12:10:49,951 - INFO - Retrieved 1858 rows for E08000001
+2024-10-29 12:10:51,319 - INFO - Retrieved 1858 rows for E08000001
+2024-10-29 12:10:52,751 - INFO - Retrieved 1858 rows for E08000001
+2024-10-29 12:10:54,185 - INFO - Retrieved 1858 rows for E08000001
+2024-10-29 12:11:45,548 - INFO - ca_la_df with north somerset created
+2024-10-29 12:11:56,205 - INFO - Retrieved 1858 rows for E08000001
+2024-10-29 12:11:56,718 - INFO - Retrieved 0 rows for E08000001
+2024-10-29 12:49:33,261 - INFO - ca_la_df with north somerset created
+2024-10-29 12:49:46,878 - INFO - Retrieved 1858 rows for E08000001
+2024-10-29 12:49:47,402 - INFO - Created final DataFrame with 1858 rows for E08000001
+2024-10-29 12:51:00,012 - INFO - Retrieved 1858 rows for E08000001
+2024-10-29 12:51:00,512 - INFO - Created final DataFrame with 1858 rows for E08000001
+2024-10-29 12:51:01,685 - INFO - Retrieved 1443 rows for E08000002
+2024-10-29 12:51:02,190 - INFO - Created final DataFrame with 1443 rows for E08000002
+2024-10-29 13:06:18,311 - INFO - ca_la_df with north somerset created
+2024-10-29 13:12:12,418 - INFO - ca_la_df with north somerset created
+2024-10-29 13:12:32,278 - INFO - Retrieved 1858 rows for E08000001
+2024-10-29 13:12:32,774 - INFO - Created final DataFrame with 1858 rows for E08000001
+2024-10-29 13:12:33,888 - INFO - Retrieved 1443 rows for E08000002
+2024-10-29 13:12:34,406 - INFO - Created final DataFrame with 1443 rows for E08000002
+2024-10-29 13:12:36,679 - INFO - Retrieved 3581 rows for E08000003
+2024-10-29 13:12:37,179 - INFO - Created final DataFrame with 3581 rows for E08000003
+2024-10-29 13:12:38,328 - INFO - Retrieved 1345 rows for E08000004
+2024-10-29 13:12:38,842 - INFO - Created final DataFrame with 1345 rows for E08000004
+2024-10-29 13:12:39,950 - INFO - Retrieved 1283 rows for E08000005
+2024-10-29 13:12:40,463 - INFO - Created final DataFrame with 1283 rows for E08000005
+2024-10-29 13:12:41,950 - INFO - Retrieved 1929 rows for E08000006
+2024-10-29 13:12:42,463 - INFO - Created final DataFrame with 1929 rows for E08000006
+2024-10-29 13:12:43,711 - INFO - Retrieved 1549 rows for E08000007
+2024-10-29 13:12:44,228 - INFO - Created final DataFrame with 1549 rows for E08000007
+2024-10-29 13:12:45,361 - INFO - Retrieved 1270 rows for E08000008
+2024-10-29 13:12:45,894 - INFO - Created final DataFrame with 1270 rows for E08000008
+2024-10-29 13:12:47,061 - INFO - Retrieved 1274 rows for E08000009
+2024-10-29 13:12:47,594 - INFO - Created final DataFrame with 1274 rows for E08000009
+2024-10-29 13:12:49,361 - INFO - Retrieved 1794 rows for E08000010
+2024-10-29 13:12:49,860 - INFO - Created final DataFrame with 1794 rows for E08000010
+2024-10-29 13:12:51,278 - INFO - Retrieved 1386 rows for E08000016
+2024-10-29 13:12:51,794 - INFO - Created final DataFrame with 1386 rows for E08000016
+2024-10-29 13:12:53,161 - INFO - Retrieved 1869 rows for E08000017
+2024-10-29 13:12:53,674 - INFO - Created final DataFrame with 1869 rows for E08000017
+2024-10-29 13:12:54,861 - INFO - Retrieved 1466 rows for E08000018
+2024-10-29 13:12:55,399 - INFO - Created final DataFrame with 1466 rows for E08000018
+2024-10-29 13:12:57,493 - INFO - Retrieved 3563 rows for E08000019
+2024-10-29 13:12:57,993 - INFO - Created final DataFrame with 3563 rows for E08000019
+2024-10-29 13:13:00,302 - INFO - Retrieved 3896 rows for E08000032
+2024-10-29 13:13:00,804 - INFO - Created final DataFrame with 3896 rows for E08000032
+2024-10-29 13:13:01,955 - INFO - Retrieved 1374 rows for E08000033
+2024-10-29 13:13:02,465 - INFO - Created final DataFrame with 1374 rows for E08000033
+2024-10-29 13:13:03,961 - INFO - Retrieved 2166 rows for E08000034
+2024-10-29 13:13:04,520 - INFO - Created final DataFrame with 2166 rows for E08000034
+2024-10-29 13:13:07,468 - INFO - Retrieved 5000 rows for E08000035
+2024-10-29 13:13:08,217 - INFO - Retrieved 532 rows for E08000035
+2024-10-29 13:13:08,748 - INFO - Created final DataFrame with 5532 rows for E08000035
+2024-10-29 13:13:10,289 - INFO - Retrieved 2011 rows for E08000036
+2024-10-29 13:13:10,841 - INFO - Created final DataFrame with 2011 rows for E08000036
+2024-10-29 13:13:11,723 - INFO - Retrieved 576 rows for E06000006
+2024-10-29 13:13:12,244 - INFO - Created final DataFrame with 576 rows for E06000006
+2024-10-29 13:13:13,262 - INFO - Retrieved 979 rows for E08000011
+2024-10-29 13:13:13,783 - INFO - Created final DataFrame with 979 rows for E08000011
+2024-10-29 13:13:15,760 - INFO - Retrieved 3363 rows for E08000012
+2024-10-29 13:13:16,263 - INFO - Created final DataFrame with 3363 rows for E08000012
+2024-10-29 13:13:17,230 - INFO - Retrieved 1041 rows for E08000013
+2024-10-29 13:13:17,734 - INFO - Created final DataFrame with 1041 rows for E08000013
+2024-10-29 13:13:19,024 - INFO - Retrieved 1686 rows for E08000014
+2024-10-29 13:13:19,532 - INFO - Created final DataFrame with 1686 rows for E08000014
+2024-10-29 13:13:21,026 - INFO - Retrieved 2153 rows for E08000015
+2024-10-29 13:13:21,528 - INFO - Created final DataFrame with 2153 rows for E08000015
+2024-10-29 13:13:22,557 - INFO - Retrieved 999 rows for E06000001
+2024-10-29 13:13:23,065 - INFO - Created final DataFrame with 999 rows for E06000001
+2024-10-29 13:13:23,984 - INFO - Retrieved 894 rows for E06000002
+2024-10-29 13:13:24,499 - INFO - Created final DataFrame with 894 rows for E06000002
+2024-10-29 13:13:25,394 - INFO - Retrieved 795 rows for E06000003
+2024-10-29 13:13:25,911 - INFO - Created final DataFrame with 795 rows for E06000003
+2024-10-29 13:13:27,133 - INFO - Retrieved 1312 rows for E06000004
+2024-10-29 13:13:27,646 - INFO - Created final DataFrame with 1312 rows for E06000004
+2024-10-29 13:13:28,600 - INFO - Retrieved 777 rows for E06000005
+2024-10-29 13:13:29,119 - INFO - Created final DataFrame with 777 rows for E06000005
+2024-10-29 13:13:32,039 - INFO - Retrieved 5000 rows for E08000025
+2024-10-29 13:13:34,367 - INFO - Retrieved 4011 rows for E08000025
+2024-10-29 13:13:34,877 - INFO - Created final DataFrame with 9011 rows for E08000025
+2024-10-29 13:13:36,460 - INFO - Retrieved 2457 rows for E08000026
+2024-10-29 13:13:36,973 - INFO - Created final DataFrame with 2457 rows for E08000026
+2024-10-29 13:13:40,064 - INFO - Retrieved 5000 rows for E08000027
+2024-10-29 13:13:42,773 - INFO - Retrieved 4999 rows for E08000027
+2024-10-29 13:13:43,490 - INFO - Retrieved 373 rows for E08000027
+2024-10-29 13:13:43,977 - INFO - Created final DataFrame with 10372 rows for E08000027
+2024-10-29 13:13:45,678 - INFO - Retrieved 2782 rows for E08000028
+2024-10-29 13:13:46,158 - INFO - Created final DataFrame with 2782 rows for E08000028
+2024-10-29 13:13:47,211 - INFO - Retrieved 1110 rows for E08000029
+2024-10-29 13:13:47,731 - INFO - Created final DataFrame with 1110 rows for E08000029
+2024-10-29 13:13:48,856 - INFO - Retrieved 1367 rows for E08000030
+2024-10-29 13:13:49,366 - INFO - Created final DataFrame with 1367 rows for E08000030
+2024-10-29 13:13:50,623 - INFO - Retrieved 1638 rows for E08000031
+2024-10-29 13:13:51,139 - INFO - Created final DataFrame with 1638 rows for E08000031
+2024-10-29 13:13:52,304 - INFO - Retrieved 1306 rows for E06000031
+2024-10-29 13:13:52,819 - INFO - Created final DataFrame with 1306 rows for E06000031
+2024-10-29 13:13:53,812 - INFO - Retrieved 975 rows for E07000008
+2024-10-29 13:13:54,329 - INFO - Created final DataFrame with 975 rows for E07000008
+2024-10-29 13:13:55,200 - INFO - Retrieved 655 rows for E07000009
+2024-10-29 13:13:55,700 - INFO - Created final DataFrame with 655 rows for E07000009
+2024-10-29 13:13:56,663 - INFO - Retrieved 1028 rows for E07000010
+2024-10-29 13:13:57,162 - INFO - Created final DataFrame with 1028 rows for E07000010
+2024-10-29 13:13:58,273 - INFO - Retrieved 1151 rows for E07000011
+2024-10-29 13:13:58,784 - INFO - Created final DataFrame with 1151 rows for E07000011
+2024-10-29 13:13:59,838 - INFO - Retrieved 1095 rows for E07000012
+2024-10-29 13:14:00,367 - INFO - Created final DataFrame with 1095 rows for E07000012
+2024-10-29 13:14:01,759 - INFO - Retrieved 1736 rows for E06000022
+2024-10-29 13:14:02,276 - INFO - Created final DataFrame with 1736 rows for E06000022
+2024-10-29 13:14:04,228 - INFO - Retrieved 3086 rows for E06000023
+2024-10-29 13:14:04,764 - INFO - Created final DataFrame with 3086 rows for E06000023
+2024-10-29 13:14:06,427 - INFO - Retrieved 1895 rows for E06000025
+2024-10-29 13:14:06,930 - INFO - Created final DataFrame with 1895 rows for E06000025
+2024-10-29 13:14:08,186 - INFO - Retrieved 1470 rows for E06000014
+2024-10-29 13:14:08,746 - INFO - Created final DataFrame with 1470 rows for E06000014
+2024-10-29 13:14:11,446 - INFO - Retrieved 4414 rows for E06000065
+2024-10-29 13:14:11,933 - INFO - Created final DataFrame with 4414 rows for E06000065
+2024-10-29 13:14:13,273 - INFO - Retrieved 1753 rows for E06000015
+2024-10-29 13:14:13,859 - INFO - Created final DataFrame with 1753 rows for E06000015
+2024-10-29 13:14:15,284 - INFO - Retrieved 1754 rows for E06000018
+2024-10-29 13:14:15,788 - INFO - Created final DataFrame with 1754 rows for E06000018
+2024-10-29 13:14:16,801 - INFO - Retrieved 1037 rows for E07000032
+2024-10-29 13:14:17,301 - INFO - Created final DataFrame with 1037 rows for E07000032
+2024-10-29 13:14:18,071 - INFO - Retrieved 483 rows for E07000033
+2024-10-29 13:14:18,589 - INFO - Created final DataFrame with 483 rows for E07000033
+2024-10-29 13:14:19,475 - INFO - Retrieved 729 rows for E07000034
+2024-10-29 13:14:20,018 - INFO - Created final DataFrame with 729 rows for E07000034
+2024-10-29 13:14:20,785 - INFO - Retrieved 483 rows for E07000035
+2024-10-29 13:14:21,304 - INFO - Created final DataFrame with 483 rows for E07000035
+2024-10-29 13:14:22,220 - INFO - Retrieved 868 rows for E07000036
+2024-10-29 13:14:22,828 - INFO - Created final DataFrame with 868 rows for E07000036
+2024-10-29 13:14:23,703 - INFO - Retrieved 539 rows for E07000037
+2024-10-29 13:14:24,228 - INFO - Created final DataFrame with 539 rows for E07000037
+2024-10-29 13:14:25,064 - INFO - Retrieved 684 rows for E07000038
+2024-10-29 13:14:25,546 - INFO - Created final DataFrame with 684 rows for E07000038
+2024-10-29 13:14:26,507 - INFO - Retrieved 962 rows for E07000039
+2024-10-29 13:14:27,027 - INFO - Created final DataFrame with 962 rows for E07000039
+2024-10-29 13:14:28,062 - INFO - Retrieved 1005 rows for E07000170
+2024-10-29 13:14:28,579 - INFO - Created final DataFrame with 1005 rows for E07000170
+2024-10-29 13:14:29,444 - INFO - Retrieved 820 rows for E07000171
+2024-10-29 13:14:29,961 - INFO - Created final DataFrame with 820 rows for E07000171
+2024-10-29 13:14:30,978 - INFO - Retrieved 941 rows for E07000172
+2024-10-29 13:14:31,496 - INFO - Created final DataFrame with 941 rows for E07000172
+2024-10-29 13:14:32,444 - INFO - Retrieved 824 rows for E07000173
+2024-10-29 13:14:32,963 - INFO - Created final DataFrame with 824 rows for E07000173
+2024-10-29 13:14:33,829 - INFO - Retrieved 687 rows for E07000174
+2024-10-29 13:14:34,368 - INFO - Created final DataFrame with 687 rows for E07000174
+2024-10-29 13:14:35,309 - INFO - Retrieved 784 rows for E07000175
+2024-10-29 13:14:35,823 - INFO - Created final DataFrame with 784 rows for E07000175
+2024-10-29 13:14:36,791 - INFO - Retrieved 811 rows for E07000176
+2024-10-29 13:14:37,325 - INFO - Created final DataFrame with 811 rows for E07000176
+2024-10-29 13:14:39,663 - INFO - Retrieved 3981 rows for E06000047
+2024-10-29 13:14:40,178 - INFO - Created final DataFrame with 3981 rows for E06000047
+2024-10-29 13:14:41,706 - INFO - Retrieved 2118 rows for E06000057
+2024-10-29 13:14:42,211 - INFO - Created final DataFrame with 2118 rows for E06000057
+2024-10-29 13:14:43,660 - INFO - Retrieved 2056 rows for E08000021
+2024-10-29 13:14:44,169 - INFO - Created final DataFrame with 2056 rows for E08000021
+2024-10-29 13:14:45,317 - INFO - Retrieved 1402 rows for E08000022
+2024-10-29 13:14:45,844 - INFO - Created final DataFrame with 1402 rows for E08000022
+2024-10-29 13:14:46,716 - INFO - Retrieved 777 rows for E08000023
+2024-10-29 13:14:47,250 - INFO - Created final DataFrame with 777 rows for E08000023
+2024-10-29 13:14:48,376 - INFO - Retrieved 1269 rows for E08000024
+2024-10-29 13:14:48,886 - INFO - Created final DataFrame with 1269 rows for E08000024
+2024-10-29 13:14:49,988 - INFO - Retrieved 1241 rows for E08000037
+2024-10-29 13:14:50,520 - INFO - Created final DataFrame with 1241 rows for E08000037
+2024-10-29 13:14:51,739 - INFO - Retrieved 1576 rows for E06000024
+2024-10-29 13:14:52,239 - INFO - Created final DataFrame with 1576 rows for E06000024

@@ -13,6 +13,8 @@ from dateutil import parser
 from dateutil.relativedelta import relativedelta
 import shutil
 import zipfile
+from io import StringIO
+from epc_schema import all_cols_polars # schema for the EPC certificates
 
 """
 Functions to get geographies and EPC data for combined authorities
@@ -618,6 +620,24 @@ def ingest_dom_certs_csv(la_list: list, cols_schema: dict) -> pl.DataFrame:
     certs_df = pl.concat(pl.collect_all(all_lazyframes))   # faster than intermediate step             
     return certs_df
 
+def make_epc_update_pldf(la_list: list, from_date_dict: dict) -> pl.DataFrame:
+    """
+    Loop through the list of local authorities and get the EPC data for each one.
+    For the specified period, which is calculated in the get_epc_pldf function.
+    The data is then concatenated into a single DataFrame and renamed to conform to the 
+    schema in the epc_schema.py file
+    """
+    epc_update_list_pldf = [get_epc_pldf(la, from_date = from_date_dict)
+                            for la
+                            in la_list]
+    epc_update_pldf = (pl.concat(epc_update_list_pldf,
+                                how='vertical')
+                                .rename(lambda x: x.upper().replace('-', '_'))
+                                .with_columns(filename = pl.lit(f"update - {datetime.now().strftime('%Y/%m/%d %H:%M:%S')}"))
+                                )
+    return epc_update_pldf
+
+
 def get_epc_from_date() -> Dict[str, int]:
     """
     Get the last date of the EPC data on the open data portal.
@@ -662,6 +682,109 @@ def get_epc_from_date() -> Dict[str, int]:
         raise requests.RequestException(f"Error fetching data from API: {e}")
     except (ValueError, KeyError, IndexError) as e:
         raise ValueError(f"Error parsing API response: {e}")
+
+def get_epc_pldf(la: str,
+                from_date: Dict[str, int],
+                to_date: Optional[Dict[str, int]] = None):
+    """
+    Uses the opendatacommunities API to get EPC data for a given local authority and 
+    time period. It creates a polars dataframe. 
+    This is intended for updates to the database not bulk downloads.
+    Hence it doesn't write to file, but uses polars dataframe to store results.
+
+    Args:
+        la (str): Local authority code.
+        from_date (Dict[str, int]): Start date with 'year' and 'month' keys.
+        to_date (Optional[Dict[str, int]]): End date with 'year' and 'month' keys. 
+                                            If None, uses current date.
+
+    Returns:
+        polars.DataFrame: Combined DataFrame of all EPC data for the specified period.
+
+    Raises:
+        requests.RequestException: If there's an error with the API request.
+    """
+ 
+    # Load the EPC auth token from the config file
+    config = load_config('../config.yml')
+    epc_key = config['epc']['auth_token']
+
+    # Deal with data parameters
+    from_year = from_date.get('year')
+    from_month = from_date.get('month')
+    if to_date is None:
+        to_month = datetime.now().month - 1 or 12
+        to_year = datetime.now().year if to_month != 12 else datetime.now().year - 1
+    else:
+        to_year = to_date.get('year')
+        to_month = to_date.get('month')
+
+    # Page size (max 5000)
+    query_size = 5000
+    
+    # Base url and example query parameters
+    base_url = 'https://epc.opendatacommunities.org/api/v1/domestic/search'
+    query_params = {'size': query_size,
+                    'local-authority': la,
+                    'from-month': from_month,
+                    'from-year': from_year,
+                    'to-month': to_month,
+                    'to-year': to_year
+                    }
+
+    # Set up authentication
+    headers = {
+        'Accept': 'text/csv',
+        'Authorization': f'Basic {epc_key}'
+    }
+    
+    try:
+        first_request = True
+        search_after = None
+        all_data = []
+
+        while search_after is not None or first_request:
+            if not first_request:
+                query_params["search-after"] = search_after
+
+            response = requests.get(base_url, headers=headers, params=query_params)
+            response.raise_for_status()
+            
+            body = response.text
+            
+            # Check if body is empty or only contains header
+            if not body or body.count('\n') <= 1:
+                break
+                
+            search_after = response.headers.get('X-Next-Search-After')
+
+            if not first_request:
+                body = body.split("\n", 1)[1]  # Skip header for subsequent requests
+            
+            # Convert the CSV string to a Polars DataFrame
+            df = pl.read_csv(StringIO(body),
+                             schema = all_cols_polars)
+            
+            if not df.is_empty():
+                all_data.append(df)
+                logging.info(f"Retrieved {df.shape[0]} rows for {la}")
+            
+            first_request = False
+
+        if not all_data:
+            logging.warning(f"No data found for {la}")
+            return pl.DataFrame()
+            
+        # Combine all DataFrames
+        final_df = pl.concat(all_data)
+        logging.info(f"Created final DataFrame with {final_df.shape[0]} rows for {la}")
+        
+        return final_df
+
+    except requests.RequestException as e:
+        logging.error(f"API request error: {e}")
+        raise
+        
 
 def get_epc_csv(la: str,
                 from_date: Dict[str, int],
