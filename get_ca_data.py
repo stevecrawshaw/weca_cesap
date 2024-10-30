@@ -14,6 +14,9 @@ from dateutil.relativedelta import relativedelta
 import shutil
 import zipfile
 from io import StringIO
+import glob
+import os
+import duckdb
 from epc_schema import all_cols_polars # schema for the EPC certificates
 
 """
@@ -187,12 +190,23 @@ def load_config(config_path: str) -> Dict:
         logging.error(f"Config file not found: {config_path}")
         raise
 
-def make_zipfile_list(ca_la_df):
+def make_zipfile_list(ca_la_df: pl.DataFrame, type: str = "domestic"):
+    """
+    Generates a list of dictionaries containing URLs for zip files and their corresponding local authority codes.
+
+    Args:
+        ca_la_df (pl.DataFrame): A Polars DataFrame containing local authority data with columns 'ladnm' and 'ladcd'.
+        type (str, optional): The type of data to be fetched. Defaults to "domestic" but also accepts "non-dom
+
+    Returns:
+        List[Dict[str, str]]: A list of dictionaries, each containing 'url' and 'ladcd' keys.
+    """
     return (ca_la_df
             .with_columns(pl.col('ladnm').str.replace_all(', |\\. | ', '-').alias('la'))
             .select([pl.concat_str(
                 pl.lit('https://epc.opendatacommunities.org/api/v1/files/'),
-                pl.lit('domestic-'),
+                pl.lit(type),
+                pl.lit('-'),
                 pl.col('ladcd'),
                 pl.lit('-'),
                 pl.col('la'),
@@ -200,7 +214,7 @@ def make_zipfile_list(ca_la_df):
                 pl.col('ladcd')])
             ).to_dicts()
 
-def dl_bulk_epc_zip(la_zipfile_list, path = "data/epc_bulk_zips/"):
+def dl_bulk_epc_zip(la_zipfile_list, path = "data/epc_bulk_zips"):
     """
     Downloads bulk EPC (Energy Performance Certificate) zip files for a list of local authorities.
 
@@ -244,7 +258,7 @@ def dl_bulk_epc_zip(la_zipfile_list, path = "data/epc_bulk_zips/"):
             continue
 
         try:
-            with open(f"{path}{la['ladcd']}.zip", "wb") as file:
+            with open(f"{path}/{la['ladcd']}.zip", "wb") as file:
                 file.write(response.content)
             logging.info(f"Downloaded {la['ladcd']}.zip")
         except IOError as e:
@@ -283,6 +297,7 @@ def extract_and_rename_csv_from_zips(zip_folder: str = "data/epc_bulk_zips") -> 
             logging.error(f"Bad zip file: {zip_file}")
         except Exception as e:
             logging.error(f"Error processing {zip_file}: {e}")
+
 
 
 def delete_all_csv_files(folder_path):
@@ -637,7 +652,6 @@ def make_epc_update_pldf(la_list: list, from_date_dict: dict) -> pl.DataFrame:
                                 )
     return epc_update_pldf
 
-
 def get_epc_from_date() -> Dict[str, int]:
     """
     Get the last date of the EPC data on the open data portal.
@@ -784,7 +798,6 @@ def get_epc_pldf(la: str,
     except requests.RequestException as e:
         logging.error(f"API request error: {e}")
         raise
-        
 
 def get_epc_csv(la: str,
                 from_date: Dict[str, int],
@@ -872,6 +885,76 @@ def get_epc_csv(la: str,
         raise
 
     logging.info(f"EPC data successfully written to {output_file}")
+
+
+def download_epc_nondom_certificates(
+    auth_token: str,
+    output_file: str,
+    base_url: str = "https://epc.opendatacommunities.org/files/all-non-domestic-certificates-single-file.zip"
+) -> bool:
+    """
+    Download EPC certificates using the provided authentication token.
+    
+    Args:
+        auth_token (str): Base64 encoded authentication token
+        output_file (str): Path where the downloaded file should be saved
+        base_url (str): URL of the EPC certificates file
+        
+    Returns:
+        bool: True if download was successful, False otherwise
+        
+    Raises:
+        requests.exceptions.RequestException: For network-related errors
+        IOError: For file handling errors
+    """
+   
+    # Configure headers with authentication
+    headers = {
+        "Authorization": f"Basic {auth_token}"
+    }
+    
+    try:
+        # Make the request with stream=True to handle large files efficiently
+        logging.info(f"Initiating download from {base_url}")
+        response = requests.get(
+            base_url,
+            headers=headers,
+            stream=True,
+            allow_redirects=True  # Equivalent to curl's -L flag
+        )
+        
+        # Check if request was successful
+        response.raise_for_status()
+        
+        # Create directory if it doesn't exist
+        output_path = Path(output_file)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Write the file in chunks to handle large files
+        with open(output_path, 'wb') as f:
+            chunk_size = 8192  # 8KB chunks
+            for chunk in response.iter_content(chunk_size=chunk_size):
+                if chunk:
+                    f.write(chunk)
+        
+        logging.info(f"Successfully downloaded file to {output_file}")
+        return True
+        
+    except requests.exceptions.HTTPError as http_err:
+        logging.error(f"HTTP error occurred: {http_err}")
+        return False
+    except requests.exceptions.ConnectionError as conn_err:
+        logging.error(f"Error connecting to server: {conn_err}")
+        return False
+    except requests.exceptions.Timeout as timeout_err:
+        logging.error(f"Timeout error: {timeout_err}")
+        return False
+    except requests.exceptions.RequestException as req_err:
+        logging.error(f"An error occurred while downloading: {req_err}")
+        return False
+    except IOError as io_err:
+        logging.error(f"Error saving file: {io_err}")
+        return False
 
 def get_ca_la_dft_lookup(dft_csv_path: str, la_list: list) -> pl.DataFrame:
     """

@@ -75,27 +75,50 @@ con.sql(qry_con_age)
 #%%
 
 qry_clean_ages = """
+CREATE OR REPLACE VIEW construction_age_clean AS
 SELECT 
-    CONSTRUCTION_AGE_BAND,
-    REGEXP_REPLACE(CONSTRUCTION_AGE_BAND, '[A-Za-z\\s:!]', '', 'g') AS cleaned_string,
-    CAST(
-        CASE 
-            WHEN REGEXP_REPLACE(CONSTRUCTION_AGE_BAND, '[A-Za-z\\s:!]', '', 'g') = '' THEN NULL
-            WHEN LOWER(CONSTRUCTION_AGE_BAND) LIKE '%before%' THEN 1899
-            WHEN REGEXP_REPLACE(CONSTRUCTION_AGE_BAND, '[A-Za-z\\s:!]', '', 'g') LIKE '%-%' 
-            THEN (
-                CAST(SPLIT_PART(REGEXP_REPLACE(CONSTRUCTION_AGE_BAND, '[A-Za-z\\s:!]', '', 'g'), '-', 1) AS INTEGER) +
-                CAST(SPLIT_PART(REGEXP_REPLACE(CONSTRUCTION_AGE_BAND, '[A-Za-z\\s:!]', '', 'g'), '-', 2) AS INTEGER)
-            ) / 2
-            ELSE CAST(REGEXP_REPLACE(CONSTRUCTION_AGE_BAND, '[A-Za-z\\s:!]', '', 'g') AS INTEGER)
-        END AS INTEGER
-    ) AS derived_year
-FROM construction_age
-WHERE CONSTRUCTION_AGE_BAND IS NOT NULL
-AND REGEXP_REPLACE(CONSTRUCTION_AGE_BAND, '[A-Za-z\\s:!]', '', 'g') != '';
+    c.*,
+    -- Clean the construction age band to produce a nominal construction year
+    CASE 
+        WHEN CONSTRUCTION_AGE_BAND IS NULL THEN NULL
+        WHEN REGEXP_REPLACE(CONSTRUCTION_AGE_BAND, '[A-Za-z\\s:!]', '', 'g') = '' THEN NULL
+        WHEN LOWER(CONSTRUCTION_AGE_BAND) LIKE '%before%' THEN 1899
+        WHEN REGEXP_REPLACE(CONSTRUCTION_AGE_BAND, '[A-Za-z\\s:!]', '', 'g') LIKE '%-%' 
+        THEN (
+            CAST(SPLIT_PART(REGEXP_REPLACE(CONSTRUCTION_AGE_BAND, '[A-Za-z\\s:!]', '', 'g'), '-', 1) AS INTEGER) +
+            CAST(SPLIT_PART(REGEXP_REPLACE(CONSTRUCTION_AGE_BAND, '[A-Za-z\\s:!]', '', 'g'), '-', 2) AS INTEGER)
+        ) / 2
+        ELSE CAST(REGEXP_REPLACE(CONSTRUCTION_AGE_BAND, '[A-Za-z\\s:!]', '', 'g') AS INTEGER)
+    END AS nominal_construction_year,
+    -- Extract the day, month, and year from the lodgement datetime
+    date_part('day', c.LODGEMENT_DATETIME)
+        AS LODGEMENT_DAY,
+    date_part('month', c.LODGEMENT_DATETIME)
+        AS LODGEMENT_MONTH,
+    date_part('year', c.LODGEMENT_DATETIME)
+        AS LODGEMENT_YEAR
+FROM certificates c
+-- Join the certificates table with the latest certificates for each UPRN
+-- This is to ensure that we only have the latest certificate for each UPRN
+INNER JOIN (
+    SELECT UPRN, MAX(LODGEMENT_DATETIME) as max_date
+    FROM certificates
+    GROUP BY UPRN
+) latest ON c.UPRN = latest.UPRN 
+    AND c.LODGEMENT_DATETIME = latest.max_date;
 """
 con.sql(qry_clean_ages)
+
+#%%
+
+con.sql("SUMMARIZE construction_age_clean;")
+
+
+
 #%%
 con_age_pldf = con.sql(qry_clean_ages).pl()
 con_age_pldf.write_csv("data/construction_age.csv")
 # %%
+con.close()
+
+#%%

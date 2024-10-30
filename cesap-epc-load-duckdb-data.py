@@ -10,7 +10,7 @@ from janitor.polars import clean_names
 import glob
 import os
 from datetime import datetime
-from epc_schema import schema_cols, cols_schema_adjusted_polars # schema for the EPC certificates
+from epc_schema import cols_schema_domestic, cols_schema_adjusted_polars, cols_schema_nondom # schema for the EPC certificates
 
 
 download_epc = True
@@ -243,11 +243,17 @@ csv_file = get_ca.extract_csv_from_zip(zip_file_path = zipped_file_path)
 get_ca.delete_zip_file(zip_file_path = zipped_file_path)
 #%%
 
-# %% [markdown]
-    # Now for the EPC data
+# %%
+la_zipfile_nondom_list = get_ca.make_zipfile_list(ca_la_df, type = "non-domestic")
+
+#%%
+            
+get_ca.dl_bulk_epc_zip(la_zipfile_nondom_list, path = "data/epc_bulk_nondom_zips")
+#%%
+get_ca.extract_and_rename_csv_from_zips("data/epc_bulk_nondom_zips")
 # %%
 
-# %%
+#%%
 epc_non_domestic = (pl.scan_csv(
     'data/all-non-domestic-certificates-single-file/certificates.csv',
     schema = cols_schema_adjusted_polars,
@@ -338,7 +344,7 @@ except Exception as e:
 # %% [markdown]
 # Have to do the domestic epc's outside the transaction block otherwise memory fail
 
-la_zipfile_list = get_ca.make_zipfile_list(ca_la_df)
+la_zipfile_list = get_ca.make_zipfile_list(ca_la_df, type = "domestic")
 
 #%%
             
@@ -347,26 +353,72 @@ get_ca.dl_bulk_epc_zip(la_zipfile_list)
 get_ca.extract_and_rename_csv_from_zips("data/epc_bulk_zips")
 
 #%%
+def load_csv_duckdb(con,
+                    csv_path,
+                    schema_file, 
+                    table_name: str = 'domestic_certificates',
+                    schema_cols: str = cols_schema_domestic):
+    """
+    Load CSV files into a DuckDB database.
+    This function reads a schema from a specified file and uses it to create a table in the DuckDB database.
+    It then imports all CSV files from a given directory into the created table.
+    Parameters:
+    con (duckdb.DuckDBPyConnection): The DuckDB connection object.
+    csv_path (str): The path to the directory containing the CSV files to be loaded.
+    schema_file (str): The path to the file containing the schema definition for the table.
+    Raises:
+    Exception: If there is an error during the import of any CSV file, an exception is caught and an error message is printed.
+    """
+    with open(schema_file, 'r') as f:
+        con.execute(f.read())
+
+    csv_files = glob.glob(f'{csv_path}/*.csv')
+    if not csv_files:
+        print(f"No CSV files found in {csv_path}")
+        return None
+    
+    for file in csv_files:
+        try:
+            print(f"Importing {os.path.basename(file)}...")
+            con.execute(f"""
+                    INSERT INTO {table_name} 
+                    SELECT * FROM read_csv(?, 
+                                         header=true,
+                                         auto_detect=false,
+                                         columns= ?,
+                                         parallel=true,
+                                         filename = ?)
+                """, [file, schema_cols, csv_path])
+        except Exception as e:
+            print(f"Error importing {file}: {str(e)}")
+#%%
 # create the certificates table according to the schema in the sql file
-with open('certificates_schema.sql', 'r') as f:
-    con.execute(f.read())
+load_csv_duckdb(con = con,
+                       csv_path="data/epc_bulk_nondom_zips",
+                       schema_file="nondom_certificates_schema.sql",
+                       table_name="nondom_certificates",
+                       schema_cols=cols_schema_nondom)
 
 #%%
-csv_files = glob.glob('data/epc_bulk_zips/*.csv')
-for file in csv_files:
-    try:
-        print(f"Importing {os.path.basename(file)}...")
-        con.execute("""
-                INSERT INTO certificates 
-                SELECT * FROM read_csv(?, 
-                                     header=true,
-                                     auto_detect=false,
-                                     columns= ?,
-                                     parallel=true,
-                                     filename = true)
-            """, [file, schema_cols])
-    except Exception as e:
-        print(f"Error importing {file}: {str(e)}") 
+load_csv_duckdb(con = con,
+                       csv_path="data/epc_bulk_zips",
+                       schema_file="certificates_schema.sql",
+                       table_name="domestic_certificates",
+                       schema_cols=cols_schema_domestic)
+
+
+#%%
+con.sql("DROP TABLE IF EXISTS domestic_certificates;")
+#%%
+con.sql("SHOW TABLES;")
+
+#%%
+
+con.sql("SUMMARIZE nondom_certificates;")
+
+
+#%%
+con.sql("SELECT COUNT(*) FROM nondom_certificates;")
 
 #%%
 # Verify the import
@@ -384,7 +436,45 @@ bulk_files = glob.glob('data/epc_bulk_zips/*.*')
 
 for file in bulk_files:
     get_ca.delete_file(file)
+#%%
+    
+# updated query to partially create the epc data view which removes duplicates
+    # and extracts the lodgement date parts and the nominal construction year
 
+qry_clean_ages = """
+CREATE OR REPLACE VIEW construction_age_clean AS
+SELECT 
+    c.*,
+    -- Clean the construction age band to produce a nominal construction year
+    CASE 
+        WHEN CONSTRUCTION_AGE_BAND IS NULL THEN NULL
+        WHEN REGEXP_REPLACE(CONSTRUCTION_AGE_BAND, '[A-Za-z\\s:!]', '', 'g') = '' THEN NULL
+        WHEN LOWER(CONSTRUCTION_AGE_BAND) LIKE '%before%' THEN 1899
+        WHEN REGEXP_REPLACE(CONSTRUCTION_AGE_BAND, '[A-Za-z\\s:!]', '', 'g') LIKE '%-%' 
+        THEN (
+            CAST(SPLIT_PART(REGEXP_REPLACE(CONSTRUCTION_AGE_BAND, '[A-Za-z\\s:!]', '', 'g'), '-', 1) AS INTEGER) +
+            CAST(SPLIT_PART(REGEXP_REPLACE(CONSTRUCTION_AGE_BAND, '[A-Za-z\\s:!]', '', 'g'), '-', 2) AS INTEGER)
+        ) / 2
+        ELSE CAST(REGEXP_REPLACE(CONSTRUCTION_AGE_BAND, '[A-Za-z\\s:!]', '', 'g') AS INTEGER)
+    END AS nominal_construction_year,
+    -- Extract the day, month, and year from the lodgement datetime
+    date_part('day', c.LODGEMENT_DATETIME)
+        AS LODGEMENT_DAY,
+    date_part('month', c.LODGEMENT_DATETIME)
+        AS LODGEMENT_MONTH,
+    date_part('year', c.LODGEMENT_DATETIME)
+        AS LODGEMENT_YEAR
+FROM certificates c
+-- Join the certificates table with the latest certificates for each UPRN
+-- This is to ensure that we only have the latest certificate for each UPRN
+INNER JOIN (
+    SELECT UPRN, MAX(LODGEMENT_DATETIME) as max_date
+    FROM certificates
+    GROUP BY UPRN
+) latest ON c.UPRN = latest.UPRN 
+    AND c.LODGEMENT_DATETIME = latest.max_date;
+"""
+con.sql(qry_clean_ages)
 
 #%%
 # the query to create the view for epc_lep_domestic_ods_vw
@@ -524,3 +614,5 @@ con.sql('SELECT COUNT(*) num_rows FROM lsoa_pwc_tbl')
 
 # %%
 con.close()
+
+# %%
