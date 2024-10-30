@@ -92,8 +92,7 @@ cols_schema_domestic = {
     'FIXED_LIGHTING_OUTLETS_COUNT': 'DOUBLE',
     'LOW_ENERGY_FIXED_LIGHT_COUNT': 'DOUBLE',
     'UPRN': 'VARCHAR',
-    'UPRN_SOURCE': 'VARCHAR',
-    'filename': 'VARCHAR'
+    'UPRN_SOURCE': 'VARCHAR'
 }
 
 cols_schema_adjusted_polars = {

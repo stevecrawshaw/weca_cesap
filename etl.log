@@ -1507,3 +1507,298 @@
 2024-10-30 14:44:57,183 - INFO - Extracted and renamed data\epc_bulk_zips\E08000036.zip to data\epc_bulk_zips\E08000036.csv
 2024-10-30 14:44:57,380 - INFO - Extracted and renamed data\epc_bulk_zips\E08000037.zip to data\epc_bulk_zips\E08000037.csv
 2024-10-30 14:46:30,926 - INFO - ca_la_df with north somerset created
+2024-10-30 17:18:59,924 - INFO - ca_la_df with north somerset created
+2024-10-30 17:19:06,692 - INFO - Downloaded E08000001.zip
+2024-10-30 17:19:07,177 - INFO - Downloaded E08000002.zip
+2024-10-30 17:19:07,743 - INFO - Downloaded E08000003.zip
+2024-10-30 17:19:08,217 - INFO - Downloaded E08000004.zip
+2024-10-30 17:19:08,683 - INFO - Downloaded E08000005.zip
+2024-10-30 17:19:09,181 - INFO - Downloaded E08000006.zip
+2024-10-30 17:19:09,677 - INFO - Downloaded E08000007.zip
+2024-10-30 17:19:10,138 - INFO - Downloaded E08000008.zip
+2024-10-30 17:19:10,599 - INFO - Downloaded E08000009.zip
+2024-10-30 17:19:11,089 - INFO - Downloaded E08000010.zip
+2024-10-30 17:19:11,586 - INFO - Downloaded E08000016.zip
+2024-10-30 17:19:12,103 - INFO - Downloaded E08000017.zip
+2024-10-30 17:19:12,572 - INFO - Downloaded E08000018.zip
+2024-10-30 17:19:13,139 - INFO - Downloaded E08000019.zip
+2024-10-30 17:19:13,660 - INFO - Downloaded E08000032.zip
+2024-10-30 17:19:14,110 - INFO - Downloaded E08000033.zip
+2024-10-30 17:19:14,592 - INFO - Downloaded E08000034.zip
+2024-10-30 17:19:15,162 - INFO - Downloaded E08000035.zip
+2024-10-30 17:19:15,902 - INFO - Downloaded E08000036.zip
+2024-10-30 17:19:16,343 - INFO - Downloaded E06000006.zip
+2024-10-30 17:19:16,794 - INFO - Downloaded E08000011.zip
+2024-10-30 17:19:17,334 - INFO - Downloaded E08000012.zip
+2024-10-30 17:19:17,841 - INFO - Downloaded E08000013.zip
+2024-10-30 17:19:18,320 - INFO - Downloaded E08000014.zip
+2024-10-30 17:19:18,822 - INFO - Downloaded E08000015.zip
+2024-10-30 17:19:19,279 - INFO - Downloaded E06000001.zip
+2024-10-30 17:19:19,825 - INFO - Downloaded E06000002.zip
+2024-10-30 17:19:20,302 - INFO - Downloaded E06000003.zip
+2024-10-30 17:19:20,761 - INFO - Downloaded E06000004.zip
+2024-10-30 17:19:21,195 - INFO - Downloaded E06000005.zip
+2024-10-30 17:19:21,799 - INFO - Downloaded E08000025.zip
+2024-10-30 17:19:22,281 - INFO - Downloaded E08000026.zip
+2024-10-30 17:19:22,762 - INFO - Downloaded E08000027.zip
+2024-10-30 17:19:23,255 - INFO - Downloaded E08000028.zip
+2024-10-30 17:19:23,705 - INFO - Downloaded E08000029.zip
+2024-10-30 17:19:24,201 - INFO - Downloaded E08000030.zip
+2024-10-30 17:19:24,728 - INFO - Downloaded E08000031.zip
+2024-10-30 17:19:25,186 - INFO - Downloaded E06000031.zip
+2024-10-30 17:19:25,660 - INFO - Downloaded E07000008.zip
+2024-10-30 17:19:26,110 - INFO - Downloaded E07000009.zip
+2024-10-30 17:19:26,591 - INFO - Downloaded E07000010.zip
+2024-10-30 17:19:27,101 - INFO - Downloaded E07000011.zip
+2024-10-30 17:19:27,572 - INFO - Downloaded E07000012.zip
+2024-10-30 17:19:28,043 - INFO - Downloaded E06000022.zip
+2024-10-30 17:19:28,602 - INFO - Downloaded E06000023.zip
+2024-10-30 17:19:29,098 - INFO - Downloaded E06000025.zip
+2024-10-30 17:19:29,559 - INFO - Downloaded E06000014.zip
+2024-10-30 17:19:30,013 - INFO - Downloaded E06000065.zip
+2024-10-30 17:19:30,498 - INFO - Downloaded E06000015.zip
+2024-10-30 17:19:31,029 - INFO - Downloaded E06000018.zip
+2024-10-30 17:19:31,519 - INFO - Downloaded E07000032.zip
+2024-10-30 17:19:31,987 - INFO - Downloaded E07000033.zip
+2024-10-30 17:19:32,462 - INFO - Downloaded E07000034.zip
+2024-10-30 17:19:32,910 - INFO - Downloaded E07000035.zip
+2024-10-30 17:19:33,403 - INFO - Downloaded E07000036.zip
+2024-10-30 17:19:33,893 - INFO - Downloaded E07000037.zip
+2024-10-30 17:19:34,352 - INFO - Downloaded E07000038.zip
+2024-10-30 17:19:34,844 - INFO - Downloaded E07000039.zip
+2024-10-30 17:19:35,273 - INFO - Downloaded E07000170.zip
+2024-10-30 17:19:35,743 - INFO - Downloaded E07000171.zip
+2024-10-30 17:19:36,255 - INFO - Downloaded E07000172.zip
+2024-10-30 17:19:36,740 - INFO - Downloaded E07000173.zip
+2024-10-30 17:19:37,217 - INFO - Downloaded E07000174.zip
+2024-10-30 17:19:37,702 - INFO - Downloaded E07000175.zip
+2024-10-30 17:19:38,200 - INFO - Downloaded E07000176.zip
+2024-10-30 17:19:38,693 - INFO - Downloaded E06000047.zip
+2024-10-30 17:19:39,412 - INFO - Downloaded E06000057.zip
+2024-10-30 17:19:39,916 - INFO - Downloaded E08000021.zip
+2024-10-30 17:19:40,415 - INFO - Downloaded E08000022.zip
+2024-10-30 17:19:40,906 - INFO - Downloaded E08000023.zip
+2024-10-30 17:19:41,386 - INFO - Downloaded E08000024.zip
+2024-10-30 17:19:41,903 - INFO - Downloaded E08000037.zip
+2024-10-30 17:19:42,394 - INFO - Downloaded E06000024.zip
+2024-10-30 17:19:50,780 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E08000010.zip to data/epc_bulk_nondom_zips/E08000010.csv
+2024-10-30 17:19:50,809 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E06000024.zip to data/epc_bulk_nondom_zips/E06000024.csv
+2024-10-30 17:19:50,833 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E08000008.zip to data/epc_bulk_nondom_zips/E08000008.csv
+2024-10-30 17:19:50,847 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E06000006.zip to data/epc_bulk_nondom_zips/E06000006.csv
+2024-10-30 17:19:50,869 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E08000018.zip to data/epc_bulk_nondom_zips/E08000018.csv
+2024-10-30 17:19:50,881 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E07000034.zip to data/epc_bulk_nondom_zips/E07000034.csv
+2024-10-30 17:19:50,889 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E07000173.zip to data/epc_bulk_nondom_zips/E07000173.csv
+2024-10-30 17:19:50,913 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E06000057.zip to data/epc_bulk_nondom_zips/E06000057.csv
+2024-10-30 17:19:50,946 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E06000047.zip to data/epc_bulk_nondom_zips/E06000047.csv
+2024-10-30 17:19:50,959 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E08000022.zip to data/epc_bulk_nondom_zips/E08000022.csv
+2024-10-30 17:19:50,967 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E07000037.zip to data/epc_bulk_nondom_zips/E07000037.csv
+2024-10-30 17:19:50,980 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E08000016.zip to data/epc_bulk_nondom_zips/E08000016.csv
+2024-10-30 17:19:50,990 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E07000032.zip to data/epc_bulk_nondom_zips/E07000032.csv
+2024-10-30 17:19:51,008 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E08000031.zip to data/epc_bulk_nondom_zips/E08000031.csv
+2024-10-30 17:19:51,024 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E08000030.zip to data/epc_bulk_nondom_zips/E08000030.csv
+2024-10-30 17:19:51,030 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E07000038.zip to data/epc_bulk_nondom_zips/E07000038.csv
+2024-10-30 17:19:51,039 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E07000036.zip to data/epc_bulk_nondom_zips/E07000036.csv
+2024-10-30 17:19:51,057 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E06000015.zip to data/epc_bulk_nondom_zips/E06000015.csv
+2024-10-30 17:19:51,073 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E06000031.zip to data/epc_bulk_nondom_zips/E06000031.csv
+2024-10-30 17:19:51,110 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E08000003.zip to data/epc_bulk_nondom_zips/E08000003.csv
+2024-10-30 17:19:51,127 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E06000014.zip to data/epc_bulk_nondom_zips/E06000014.csv
+2024-10-30 17:19:51,134 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E07000176.zip to data/epc_bulk_nondom_zips/E07000176.csv
+2024-10-30 17:19:51,141 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E07000035.zip to data/epc_bulk_nondom_zips/E07000035.csv
+2024-10-30 17:19:51,154 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E08000002.zip to data/epc_bulk_nondom_zips/E08000002.csv
+2024-10-30 17:19:51,167 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E07000008.zip to data/epc_bulk_nondom_zips/E07000008.csv
+2024-10-30 17:19:51,191 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E08000028.zip to data/epc_bulk_nondom_zips/E08000028.csv
+2024-10-30 17:19:51,212 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E08000026.zip to data/epc_bulk_nondom_zips/E08000026.csv
+2024-10-30 17:19:51,220 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E06000003.zip to data/epc_bulk_nondom_zips/E06000003.csv
+2024-10-30 17:19:51,233 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E07000011.zip to data/epc_bulk_nondom_zips/E07000011.csv
+2024-10-30 17:19:51,242 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E07000170.zip to data/epc_bulk_nondom_zips/E07000170.csv
+2024-10-30 17:19:51,255 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E06000004.zip to data/epc_bulk_nondom_zips/E06000004.csv
+2024-10-30 17:19:51,285 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E08000032.zip to data/epc_bulk_nondom_zips/E08000032.csv
+2024-10-30 17:19:51,292 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E07000010.zip to data/epc_bulk_nondom_zips/E07000010.csv
+2024-10-30 17:19:51,301 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E07000175.zip to data/epc_bulk_nondom_zips/E07000175.csv
+2024-10-30 17:19:51,308 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E06000001.zip to data/epc_bulk_nondom_zips/E06000001.csv
+2024-10-30 17:19:51,379 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E08000025.zip to data/epc_bulk_nondom_zips/E08000025.csv
+2024-10-30 17:19:51,386 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E07000009.zip to data/epc_bulk_nondom_zips/E07000009.csv
+2024-10-30 17:19:51,392 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E07000033.zip to data/epc_bulk_nondom_zips/E07000033.csv
+2024-10-30 17:19:51,402 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E06000002.zip to data/epc_bulk_nondom_zips/E06000002.csv
+2024-10-30 17:19:51,423 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E08000017.zip to data/epc_bulk_nondom_zips/E08000017.csv
+2024-10-30 17:19:51,445 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E08000027.zip to data/epc_bulk_nondom_zips/E08000027.csv
+2024-10-30 17:19:51,453 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E07000172.zip to data/epc_bulk_nondom_zips/E07000172.csv
+2024-10-30 17:19:51,480 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E08000021.zip to data/epc_bulk_nondom_zips/E08000021.csv
+2024-10-30 17:19:51,498 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E08000037.zip to data/epc_bulk_nondom_zips/E08000037.csv
+2024-10-30 17:19:51,510 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E08000013.zip to data/epc_bulk_nondom_zips/E08000013.csv
+2024-10-30 17:19:51,532 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E08000036.zip to data/epc_bulk_nondom_zips/E08000036.csv
+2024-10-30 17:19:51,551 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E08000015.zip to data/epc_bulk_nondom_zips/E08000015.csv
+2024-10-30 17:19:51,569 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E08000024.zip to data/epc_bulk_nondom_zips/E08000024.csv
+2024-10-30 17:19:51,578 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E06000065.zip to data/epc_bulk_nondom_zips/E06000065.csv
+2024-10-30 17:19:51,611 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E06000023.zip to data/epc_bulk_nondom_zips/E06000023.csv
+2024-10-30 17:19:51,635 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E08000034.zip to data/epc_bulk_nondom_zips/E08000034.csv
+2024-10-30 17:19:51,643 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E08000011.zip to data/epc_bulk_nondom_zips/E08000011.csv
+2024-10-30 17:19:51,651 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E06000005.zip to data/epc_bulk_nondom_zips/E06000005.csv
+2024-10-30 17:19:51,658 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E07000174.zip to data/epc_bulk_nondom_zips/E07000174.csv
+2024-10-30 17:19:51,672 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E06000022.zip to data/epc_bulk_nondom_zips/E06000022.csv
+2024-10-30 17:19:51,683 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E08000004.zip to data/epc_bulk_nondom_zips/E08000004.csv
+2024-10-30 17:19:51,700 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E08000007.zip to data/epc_bulk_nondom_zips/E08000007.csv
+2024-10-30 17:19:51,710 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E07000012.zip to data/epc_bulk_nondom_zips/E07000012.csv
+2024-10-30 17:19:51,722 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E08000005.zip to data/epc_bulk_nondom_zips/E08000005.csv
+2024-10-30 17:19:51,737 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E06000025.zip to data/epc_bulk_nondom_zips/E06000025.csv
+2024-10-30 17:19:51,752 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E08000006.zip to data/epc_bulk_nondom_zips/E08000006.csv
+2024-10-30 17:19:51,769 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E08000009.zip to data/epc_bulk_nondom_zips/E08000009.csv
+2024-10-30 17:19:51,778 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E08000023.zip to data/epc_bulk_nondom_zips/E08000023.csv
+2024-10-30 17:19:51,783 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E07000039.zip to data/epc_bulk_nondom_zips/E07000039.csv
+2024-10-30 17:19:51,798 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E08000001.zip to data/epc_bulk_nondom_zips/E08000001.csv
+2024-10-30 17:19:51,812 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E08000014.zip to data/epc_bulk_nondom_zips/E08000014.csv
+2024-10-30 17:19:51,835 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E06000018.zip to data/epc_bulk_nondom_zips/E06000018.csv
+2024-10-30 17:19:51,848 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E08000033.zip to data/epc_bulk_nondom_zips/E08000033.csv
+2024-10-30 17:19:51,880 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E08000019.zip to data/epc_bulk_nondom_zips/E08000019.csv
+2024-10-30 17:19:51,927 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E08000035.zip to data/epc_bulk_nondom_zips/E08000035.csv
+2024-10-30 17:19:51,954 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E08000012.zip to data/epc_bulk_nondom_zips/E08000012.csv
+2024-10-30 17:19:51,962 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E07000171.zip to data/epc_bulk_nondom_zips/E07000171.csv
+2024-10-30 17:19:51,973 - INFO - Extracted and renamed data/epc_bulk_nondom_zips/E08000029.zip to data/epc_bulk_nondom_zips/E08000029.csv
+2024-10-30 17:20:14,009 - INFO - Downloaded E08000001.zip
+2024-10-30 17:20:14,874 - INFO - Downloaded E08000002.zip
+2024-10-30 17:20:16,414 - INFO - Downloaded E08000003.zip
+2024-10-30 17:20:17,205 - INFO - Downloaded E08000004.zip
+2024-10-30 17:20:18,192 - INFO - Downloaded E08000005.zip
+2024-10-30 17:20:19,262 - INFO - Downloaded E08000006.zip
+2024-10-30 17:20:20,188 - INFO - Downloaded E08000007.zip
+2024-10-30 17:20:21,074 - INFO - Downloaded E08000008.zip
+2024-10-30 17:20:21,939 - INFO - Downloaded E08000009.zip
+2024-10-30 17:20:22,929 - INFO - Downloaded E08000010.zip
+2024-10-30 17:20:23,839 - INFO - Downloaded E08000016.zip
+2024-10-30 17:20:24,865 - INFO - Downloaded E08000017.zip
+2024-10-30 17:20:25,757 - INFO - Downloaded E08000018.zip
+2024-10-30 17:20:27,530 - INFO - Downloaded E08000019.zip
+2024-10-30 17:20:29,341 - INFO - Downloaded E08000032.zip
+2024-10-30 17:20:30,285 - INFO - Downloaded E08000033.zip
+2024-10-30 17:20:31,524 - INFO - Downloaded E08000034.zip
+2024-10-30 17:20:33,751 - INFO - Downloaded E08000035.zip
+2024-10-30 17:20:35,111 - INFO - Downloaded E08000036.zip
+2024-10-30 17:20:35,769 - INFO - Downloaded E06000006.zip
+2024-10-30 17:20:36,534 - INFO - Downloaded E08000011.zip
+2024-10-30 17:20:38,480 - INFO - Downloaded E08000012.zip
+2024-10-30 17:20:39,491 - INFO - Downloaded E08000013.zip
+2024-10-30 17:20:40,625 - INFO - Downloaded E08000014.zip
+2024-10-30 17:20:42,145 - INFO - Downloaded E08000015.zip
+2024-10-30 17:20:43,036 - INFO - Downloaded E06000001.zip
+2024-10-30 17:20:43,831 - INFO - Downloaded E06000002.zip
+2024-10-30 17:20:44,570 - INFO - Downloaded E06000003.zip
+2024-10-30 17:20:45,748 - INFO - Downloaded E06000004.zip
+2024-10-30 17:20:46,475 - INFO - Downloaded E06000005.zip
+2024-10-30 17:20:50,073 - INFO - Downloaded E08000025.zip
+2024-10-30 17:20:51,504 - INFO - Downloaded E08000026.zip
+2024-10-30 17:20:52,462 - INFO - Downloaded E08000027.zip
+2024-10-30 17:20:53,430 - INFO - Downloaded E08000028.zip
+2024-10-30 17:20:54,185 - INFO - Downloaded E08000029.zip
+2024-10-30 17:20:55,252 - INFO - Downloaded E08000030.zip
+2024-10-30 17:20:56,523 - INFO - Downloaded E08000031.zip
+2024-10-30 17:20:57,692 - INFO - Downloaded E06000031.zip
+2024-10-30 17:20:58,599 - INFO - Downloaded E07000008.zip
+2024-10-30 17:20:59,192 - INFO - Downloaded E07000009.zip
+2024-10-30 17:20:59,844 - INFO - Downloaded E07000010.zip
+2024-10-30 17:21:00,680 - INFO - Downloaded E07000011.zip
+2024-10-30 17:21:01,544 - INFO - Downloaded E07000012.zip
+2024-10-30 17:21:02,593 - INFO - Downloaded E06000022.zip
+2024-10-30 17:21:04,077 - INFO - Downloaded E06000023.zip
+2024-10-30 17:21:05,215 - INFO - Downloaded E06000025.zip
+2024-10-30 17:21:05,985 - INFO - Downloaded E06000014.zip
+2024-10-30 17:21:06,540 - INFO - Downloaded E06000065.zip
+2024-10-30 17:21:07,454 - INFO - Downloaded E06000015.zip
+2024-10-30 17:21:08,871 - INFO - Downloaded E06000018.zip
+2024-10-30 17:21:09,689 - INFO - Downloaded E07000032.zip
+2024-10-30 17:21:10,438 - INFO - Downloaded E07000033.zip
+2024-10-30 17:21:11,101 - INFO - Downloaded E07000034.zip
+2024-10-30 17:21:11,691 - INFO - Downloaded E07000035.zip
+2024-10-30 17:21:12,350 - INFO - Downloaded E07000036.zip
+2024-10-30 17:21:13,171 - INFO - Downloaded E07000037.zip
+2024-10-30 17:21:13,891 - INFO - Downloaded E07000038.zip
+2024-10-30 17:21:14,501 - INFO - Downloaded E07000039.zip
+2024-10-30 17:21:15,242 - INFO - Downloaded E07000170.zip
+2024-10-30 17:21:15,970 - INFO - Downloaded E07000171.zip
+2024-10-30 17:21:16,623 - INFO - Downloaded E07000172.zip
+2024-10-30 17:21:17,384 - INFO - Downloaded E07000173.zip
+2024-10-30 17:21:18,037 - INFO - Downloaded E07000174.zip
+2024-10-30 17:21:18,743 - INFO - Downloaded E07000175.zip
+2024-10-30 17:21:19,408 - INFO - Downloaded E07000176.zip
+2024-10-30 17:21:21,010 - INFO - Downloaded E06000047.zip
+2024-10-30 17:21:22,048 - INFO - Downloaded E06000057.zip
+2024-10-30 17:21:22,975 - INFO - Downloaded E08000021.zip
+2024-10-30 17:21:23,887 - INFO - Downloaded E08000022.zip
+2024-10-30 17:21:24,664 - INFO - Downloaded E08000023.zip
+2024-10-30 17:21:25,825 - INFO - Downloaded E08000024.zip
+2024-10-30 17:21:26,621 - INFO - Downloaded E08000037.zip
+2024-10-30 17:21:27,436 - INFO - Downloaded E06000024.zip
+2024-10-30 17:22:31,750 - INFO - Extracted and renamed data/epc_bulk_zips/E08000010.zip to data/epc_bulk_zips/E08000010.csv
+2024-10-30 17:22:32,155 - INFO - Extracted and renamed data/epc_bulk_zips/E06000024.zip to data/epc_bulk_zips/E06000024.csv
+2024-10-30 17:22:32,564 - INFO - Extracted and renamed data/epc_bulk_zips/E08000008.zip to data/epc_bulk_zips/E08000008.csv
+2024-10-30 17:22:32,790 - INFO - Extracted and renamed data/epc_bulk_zips/E06000006.zip to data/epc_bulk_zips/E06000006.csv
+2024-10-30 17:22:33,199 - INFO - Extracted and renamed data/epc_bulk_zips/E08000018.zip to data/epc_bulk_zips/E08000018.csv
+2024-10-30 17:22:33,379 - INFO - Extracted and renamed data/epc_bulk_zips/E07000034.zip to data/epc_bulk_zips/E07000034.csv
+2024-10-30 17:22:33,591 - INFO - Extracted and renamed data/epc_bulk_zips/E07000173.zip to data/epc_bulk_zips/E07000173.csv
+2024-10-30 17:22:34,171 - INFO - Extracted and renamed data/epc_bulk_zips/E06000057.zip to data/epc_bulk_zips/E06000057.csv
+2024-10-30 17:22:35,212 - INFO - Extracted and renamed data/epc_bulk_zips/E06000047.zip to data/epc_bulk_zips/E06000047.csv
+2024-10-30 17:22:35,564 - INFO - Extracted and renamed data/epc_bulk_zips/E08000022.zip to data/epc_bulk_zips/E08000022.csv
+2024-10-30 17:22:35,706 - INFO - Extracted and renamed data/epc_bulk_zips/E07000037.zip to data/epc_bulk_zips/E07000037.csv
+2024-10-30 17:22:36,129 - INFO - Extracted and renamed data/epc_bulk_zips/E08000016.zip to data/epc_bulk_zips/E08000016.csv
+2024-10-30 17:22:36,333 - INFO - Extracted and renamed data/epc_bulk_zips/E07000032.zip to data/epc_bulk_zips/E07000032.csv
+2024-10-30 17:22:36,746 - INFO - Extracted and renamed data/epc_bulk_zips/E08000031.zip to data/epc_bulk_zips/E08000031.csv
+2024-10-30 17:22:37,180 - INFO - Extracted and renamed data/epc_bulk_zips/E08000030.zip to data/epc_bulk_zips/E08000030.csv
+2024-10-30 17:22:37,345 - INFO - Extracted and renamed data/epc_bulk_zips/E07000038.zip to data/epc_bulk_zips/E07000038.csv
+2024-10-30 17:22:37,524 - INFO - Extracted and renamed data/epc_bulk_zips/E07000036.zip to data/epc_bulk_zips/E07000036.csv
+2024-10-30 17:22:37,968 - INFO - Extracted and renamed data/epc_bulk_zips/E06000015.zip to data/epc_bulk_zips/E06000015.csv
+2024-10-30 17:22:38,352 - INFO - Extracted and renamed data/epc_bulk_zips/E06000031.zip to data/epc_bulk_zips/E06000031.csv
+2024-10-30 17:22:39,497 - INFO - Extracted and renamed data/epc_bulk_zips/E08000003.zip to data/epc_bulk_zips/E08000003.csv
+2024-10-30 17:22:39,818 - INFO - Extracted and renamed data/epc_bulk_zips/E06000014.zip to data/epc_bulk_zips/E06000014.csv
+2024-10-30 17:22:40,012 - INFO - Extracted and renamed data/epc_bulk_zips/E07000176.zip to data/epc_bulk_zips/E07000176.csv
+2024-10-30 17:22:40,139 - INFO - Extracted and renamed data/epc_bulk_zips/E07000035.zip to data/epc_bulk_zips/E07000035.csv
+2024-10-30 17:22:40,441 - INFO - Extracted and renamed data/epc_bulk_zips/E08000002.zip to data/epc_bulk_zips/E08000002.csv
+2024-10-30 17:22:40,675 - INFO - Extracted and renamed data/epc_bulk_zips/E07000008.zip to data/epc_bulk_zips/E07000008.csv
+2024-10-30 17:22:41,145 - INFO - Extracted and renamed data/epc_bulk_zips/E08000028.zip to data/epc_bulk_zips/E08000028.csv
+2024-10-30 17:22:41,726 - INFO - Extracted and renamed data/epc_bulk_zips/E08000026.zip to data/epc_bulk_zips/E08000026.csv
+2024-10-30 17:22:41,956 - INFO - Extracted and renamed data/epc_bulk_zips/E06000003.zip to data/epc_bulk_zips/E06000003.csv
+2024-10-30 17:22:42,263 - INFO - Extracted and renamed data/epc_bulk_zips/E07000011.zip to data/epc_bulk_zips/E07000011.csv
+2024-10-30 17:22:42,475 - INFO - Extracted and renamed data/epc_bulk_zips/E07000170.zip to data/epc_bulk_zips/E07000170.csv
+2024-10-30 17:22:42,829 - INFO - Extracted and renamed data/epc_bulk_zips/E06000004.zip to data/epc_bulk_zips/E06000004.csv
+2024-10-30 17:22:43,795 - INFO - Extracted and renamed data/epc_bulk_zips/E08000032.zip to data/epc_bulk_zips/E08000032.csv
+2024-10-30 17:22:43,978 - INFO - Extracted and renamed data/epc_bulk_zips/E07000010.zip to data/epc_bulk_zips/E07000010.csv
+2024-10-30 17:22:44,199 - INFO - Extracted and renamed data/epc_bulk_zips/E07000175.zip to data/epc_bulk_zips/E07000175.csv
+2024-10-30 17:22:44,384 - INFO - Extracted and renamed data/epc_bulk_zips/E06000001.zip to data/epc_bulk_zips/E06000001.csv
+2024-10-30 17:22:46,316 - INFO - Extracted and renamed data/epc_bulk_zips/E08000025.zip to data/epc_bulk_zips/E08000025.csv
+2024-10-30 17:22:46,473 - INFO - Extracted and renamed data/epc_bulk_zips/E07000009.zip to data/epc_bulk_zips/E07000009.csv
+2024-10-30 17:22:46,606 - INFO - Extracted and renamed data/epc_bulk_zips/E07000033.zip to data/epc_bulk_zips/E07000033.csv
+2024-10-30 17:22:46,870 - INFO - Extracted and renamed data/epc_bulk_zips/E06000002.zip to data/epc_bulk_zips/E06000002.csv
+2024-10-30 17:22:47,397 - INFO - Extracted and renamed data/epc_bulk_zips/E08000017.zip to data/epc_bulk_zips/E08000017.csv
+2024-10-30 17:22:47,883 - INFO - Extracted and renamed data/epc_bulk_zips/E08000027.zip to data/epc_bulk_zips/E08000027.csv
+2024-10-30 17:22:48,049 - INFO - Extracted and renamed data/epc_bulk_zips/E07000172.zip to data/epc_bulk_zips/E07000172.csv
+2024-10-30 17:22:48,568 - INFO - Extracted and renamed data/epc_bulk_zips/E08000021.zip to data/epc_bulk_zips/E08000021.csv
+2024-10-30 17:22:48,886 - INFO - Extracted and renamed data/epc_bulk_zips/E08000037.zip to data/epc_bulk_zips/E08000037.csv
+2024-10-30 17:22:49,186 - INFO - Extracted and renamed data/epc_bulk_zips/E08000013.zip to data/epc_bulk_zips/E08000013.csv
+2024-10-30 17:22:49,880 - INFO - Extracted and renamed data/epc_bulk_zips/E08000036.zip to data/epc_bulk_zips/E08000036.csv
+2024-10-30 17:22:50,430 - INFO - Extracted and renamed data/epc_bulk_zips/E08000015.zip to data/epc_bulk_zips/E08000015.csv
+2024-10-30 17:22:50,998 - INFO - Extracted and renamed data/epc_bulk_zips/E08000024.zip to data/epc_bulk_zips/E08000024.csv
+2024-10-30 17:22:51,103 - INFO - Extracted and renamed data/epc_bulk_zips/E06000065.zip to data/epc_bulk_zips/E06000065.csv
+2024-10-30 17:22:51,953 - INFO - Extracted and renamed data/epc_bulk_zips/E06000023.zip to data/epc_bulk_zips/E06000023.csv
+2024-10-30 17:22:52,621 - INFO - Extracted and renamed data/epc_bulk_zips/E08000034.zip to data/epc_bulk_zips/E08000034.csv
+2024-10-30 17:22:52,915 - INFO - Extracted and renamed data/epc_bulk_zips/E08000011.zip to data/epc_bulk_zips/E08000011.csv
+2024-10-30 17:22:53,134 - INFO - Extracted and renamed data/epc_bulk_zips/E06000005.zip to data/epc_bulk_zips/E06000005.csv
+2024-10-30 17:22:53,320 - INFO - Extracted and renamed data/epc_bulk_zips/E07000174.zip to data/epc_bulk_zips/E07000174.csv
+2024-10-30 17:22:53,655 - INFO - Extracted and renamed data/epc_bulk_zips/E06000022.zip to data/epc_bulk_zips/E06000022.csv
+2024-10-30 17:22:54,065 - INFO - Extracted and renamed data/epc_bulk_zips/E08000004.zip to data/epc_bulk_zips/E08000004.csv
+2024-10-30 17:22:54,514 - INFO - Extracted and renamed data/epc_bulk_zips/E08000007.zip to data/epc_bulk_zips/E08000007.csv
+2024-10-30 17:22:54,798 - INFO - Extracted and renamed data/epc_bulk_zips/E07000012.zip to data/epc_bulk_zips/E07000012.csv
+2024-10-30 17:22:55,170 - INFO - Extracted and renamed data/epc_bulk_zips/E08000005.zip to data/epc_bulk_zips/E08000005.csv
+2024-10-30 17:22:55,628 - INFO - Extracted and renamed data/epc_bulk_zips/E06000025.zip to data/epc_bulk_zips/E06000025.csv
+2024-10-30 17:22:56,226 - INFO - Extracted and renamed data/epc_bulk_zips/E08000006.zip to data/epc_bulk_zips/E08000006.csv
+2024-10-30 17:22:56,584 - INFO - Extracted and renamed data/epc_bulk_zips/E08000009.zip to data/epc_bulk_zips/E08000009.csv
+2024-10-30 17:22:56,851 - INFO - Extracted and renamed data/epc_bulk_zips/E08000023.zip to data/epc_bulk_zips/E08000023.csv
+2024-10-30 17:22:57,020 - INFO - Extracted and renamed data/epc_bulk_zips/E07000039.zip to data/epc_bulk_zips/E07000039.csv
+2024-10-30 17:22:57,477 - INFO - Extracted and renamed data/epc_bulk_zips/E08000001.zip to data/epc_bulk_zips/E08000001.csv
+2024-10-30 17:22:57,962 - INFO - Extracted and renamed data/epc_bulk_zips/E08000014.zip to data/epc_bulk_zips/E08000014.csv
+2024-10-30 17:22:58,696 - INFO - Extracted and renamed data/epc_bulk_zips/E06000018.zip to data/epc_bulk_zips/E06000018.csv
+2024-10-30 17:22:59,085 - INFO - Extracted and renamed data/epc_bulk_zips/E08000033.zip to data/epc_bulk_zips/E08000033.csv
+2024-10-30 17:23:00,010 - INFO - Extracted and renamed data/epc_bulk_zips/E08000019.zip to data/epc_bulk_zips/E08000019.csv
+2024-10-30 17:23:01,543 - INFO - Extracted and renamed data/epc_bulk_zips/E08000035.zip to data/epc_bulk_zips/E08000035.csv
+2024-10-30 17:23:02,560 - INFO - Extracted and renamed data/epc_bulk_zips/E08000012.zip to data/epc_bulk_zips/E08000012.csv
+2024-10-30 17:23:02,795 - INFO - Extracted and renamed data/epc_bulk_zips/E07000171.zip to data/epc_bulk_zips/E07000171.csv
+2024-10-30 17:23:03,128 - INFO - Extracted and renamed data/epc_bulk_zips/E08000029.zip to data/epc_bulk_zips/E08000029.csv
+2024-10-30 17:28:41,320 - INFO - ca_la_df with north somerset created
+2024-10-30 17:28:51,676 - INFO - ca_la_df with north somerset created
