@@ -17,7 +17,7 @@ from io import StringIO
 import glob
 import os
 import duckdb
-from epc_schema import all_cols_polars # schema for the EPC certificates
+from epc_schema import cols_schema_domestic, cols_schema_nondom, all_cols_polars # schema for the EPC certificates
 
 """
 Functions to get geographies and EPC data for combined authorities
@@ -37,6 +37,66 @@ logging.basicConfig(
 )
 
 #%%
+
+def connect_duckdb(db_path: str) -> duckdb.DuckDBPyConnection:
+    """
+    Connect to a DuckDB database and return the connection object.
+    
+    Args:
+        db_path (str): The path to the DuckDB database file.
+    
+    Returns:
+        duckdb.DuckDBPyConnection: The connection object to the DuckDB database.
+    """
+    try:
+        con = duckdb.connect(db_path)
+        logging.info(f"Connected to DuckDB database: {db_path}")
+        return con
+    except Exception as e:
+        logging.error(f"Error connecting to DuckDB database: {e}")
+        raise
+
+def load_csv_duckdb(con,
+                    csv_path,
+                    schema_file, 
+                    table_name: str = 'domestic_certificates',
+                    schema_cols: str = cols_schema_domestic):
+    """
+    Load CSV files into a DuckDB database.
+    This function reads a schema from a specified file and uses it to create a table in the DuckDB database.
+    It then imports all CSV files from a given directory into the created table.
+    Parameters:
+    con (duckdb.DuckDBPyConnection): The DuckDB connection object.
+    csv_path (str): The path to the directory containing the CSV files to be loaded.
+    schema_file (str): The path to the file containing the schema definition for the table.
+    Raises:
+    Exception: If there is an error during the import of any CSV file, an exception is caught and an error message is printed.
+    """
+    with open(schema_file, 'r') as f:
+        con.execute(f.read())
+        logging.info(f"Schema from {schema_file} executed successfully.")
+
+    csv_files = glob.glob(f'{csv_path}/*.csv')
+    if not csv_files:
+        logging.warning(f"No CSV files found in {csv_path}")
+        return None
+    
+    for file in csv_files:
+        try:
+            logging.info(f"Importing {os.path.basename(file)}...")
+            con.execute(f"""
+                    INSERT INTO {table_name} 
+                    SELECT * FROM read_csv(?, 
+                                         header=true,
+                                         auto_detect=false,
+                                         columns= ?,
+                                         parallel=true,
+                                         filename = ?)
+                """, [file, schema_cols, csv_path])
+            logging.info(f"Successfully imported {os.path.basename(file)}.")
+        except Exception as e:
+            logging.error(f"Error importing {file}: {str(e)}")
+
 
 def make_esri_fs_url(base_url: str,
                      service_portion: str,

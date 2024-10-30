@@ -1802,3 +1802,5 @@
 2024-10-30 17:23:03,128 - INFO - Extracted and renamed data/epc_bulk_zips/E08000029.zip to data/epc_bulk_zips/E08000029.csv
 2024-10-30 17:28:41,320 - INFO - ca_la_df with north somerset created
 2024-10-30 17:28:51,676 - INFO - ca_la_df with north somerset created
+2024-10-30 18:44:43,579 - INFO - ca_la_df with north somerset created
+2024-10-30 18:44:47,363 - INFO - Connected to DuckDB database: data/ca_epc.duckdb
