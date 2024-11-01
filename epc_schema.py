@@ -262,7 +262,7 @@ all_cols_polars = {
     'uprn-source': pl.Utf8
 }
 
-cols_schema_nondom = schema = {
+cols_schema_nondom = {
     'LMK_KEY': 'VARCHAR',
     'ADDRESS1': 'VARCHAR',
     'ADDRESS2': 'VARCHAR', 

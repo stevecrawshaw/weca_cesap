@@ -59,7 +59,7 @@ def connect_duckdb(db_path: str) -> duckdb.DuckDBPyConnection:
 def load_csv_duckdb(con,
                     csv_path,
                     schema_file, 
-                    table_name: str = 'domestic_certificates',
+                    table_name: str = 'epc_domestic_tbl',
                     schema_cols: str = cols_schema_domestic):
     """
     Load CSV files into a DuckDB database.
@@ -80,10 +80,10 @@ def load_csv_duckdb(con,
     if not csv_files:
         logging.warning(f"No CSV files found in {csv_path}")
         return None
-    
     for file in csv_files:
         try:
             logging.info(f"Importing {os.path.basename(file)}...")
+
             con.execute(f"""
                     INSERT INTO {table_name} 
                     SELECT * FROM read_csv(?, 
@@ -96,6 +96,7 @@ def load_csv_duckdb(con,
             logging.info(f"Successfully imported {os.path.basename(file)}.")
         except Exception as e:
             logging.error(f"Error importing {file}: {str(e)}")
+
 
 
 def make_esri_fs_url(base_url: str,
