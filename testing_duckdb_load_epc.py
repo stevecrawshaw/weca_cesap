@@ -2,6 +2,7 @@
 # use .venv - make sure to restart jupyter kernel.
 import get_ca_data as get_ca # functions for retrieving CA \ common data
 
+
 download_epc = False
 # %%
 ca_la_df = get_ca.get_ca_la_df(2024, inc_ns = True) # include NS

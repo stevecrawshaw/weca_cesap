@@ -1,5 +1,4 @@
 # %%
-# use .venv - make sure to restart jupyter kernel.
 import polars as pl
 import duckdb
 import json
@@ -14,7 +13,6 @@ download_lsoa = True
 
 # %% [markdown]
 # This notebook retrieves all the base data needed for comparison analysis with other Combined Authorities and loads it into a duckdb database.
-# SQLite was tried, but it is slow, not directly compatible with polars and does not work well with datasette because of the size of data.
 
 # %% [markdown]
 ## Define the base urls for the ArcGIS API and some parameters
@@ -62,7 +60,7 @@ path_2011_poly_parquet = 'data/all_cas_lsoa_poly_2011.parquet'
 path_2021_poly_parquet = 'data/all_cas_lsoa_poly_2021.parquet'
 chunk_size = 100 # this is used in a a where clause to set the number of lsoa polys per api call
 nomis_ts054_url = "https://www.nomisweb.co.uk/api/v01/dataset/NM_2072_1.data.csv"
-
+postcode_directory = "data/postcode_centroids"
 #%% [markdown]
 # Nomis parameters for the tenure data
 #%%
@@ -91,15 +89,6 @@ ladcds_in_cauths = ca_la_codes # this is the same as ca_la_codes RATIONALISE
 la_list = (ca_la_df['ladcd']) #includes north somerset
 ladnm = tuple(ca_la_df['ladnm'].to_list())
 f'There are {str(la_list.shape)[1:3]} Local Authorities in Combined Authorities'
-#%%
-
-### EXPERIMENT WITH BULK DOWNLOADS
-# https://epc.opendatacommunities.org/files/domestic-E06000023-Bristol-City-of.zip
-#%%
-
-# MOVE TO DATABASE BIT - THE END
-# DO THE SAME PROCESS FOR THE NON DOMESTIC EPC DATA
-# INTEGRATE THE UPDATE PROCESS - USE UPSERT TO UPDATE THE DATABASE
 #%%
 # %% [markdown]
 # Get the lookup table that relates DFT Local authority ID's in the Combined authorities to ONS LA codes
@@ -231,10 +220,12 @@ lsoa_imd_df = (pl.read_csv(imd_data_path)
 #%%
 
 zipped_file_path = get_ca.download_zip(url = base_url_pc_centroids_zip,
-directory="data",
+directory=postcode_directory,
 filename="postcode_centroids.zip")
 #%%
-csv_file = get_ca.extract_csv_from_zip(zip_file_path = zipped_file_path)
+# TODO: build import routine for direct import to duckdb
+postcodes_csv_file = get_ca.extract_csv_from_zip(zip_file_path = zipped_file_path)
+#%%
 #%%
 get_ca.delete_zip_file(zip_file_path = zipped_file_path)
 #%%
@@ -252,7 +243,8 @@ if download_epc:
 
 
 # %%
-# SECTION BELOW IS FOR THE UPDATE ROUTINE ONLY
+# SECTION BELOW IS FOR THE UPDATE ROUTINE ONLY TESTING
+    # - PROBABLY IMPLEMENT IN SEPARATE SCRIPT
 if not download_epc:
     from_date_dict = get_ca.get_epc_from_date()
     epc_update_pldf = get_ca.make_epc_update_pldf(la_list, from_date_dict)
@@ -281,7 +273,7 @@ ca_tenure_lsoa = (pl.scan_csv('data/ts054_tenure_nomis.csv')
                   .select(pl.all().name.to_lowercase())
                   .select(pl.all().name.map(lambda col_name: col_name.replace(':', '')))
                   .with_columns(pl.col('lsoa').str.slice(0, 9).alias('lsoacd'))
-                  .filter(pl.col('lsoacd').is_in(ca_lsoa_codes))
+                  .filter(pl.col('lsoacd').is_in(lsoas_in_cauths_iter))
                   ).collect()
 
 # %%
@@ -341,8 +333,16 @@ get_ca.load_csv_duckdb(con = con,
                        table_name="epc_domestic_tbl",
                        schema_cols=get_ca.cols_schema_domestic)
 
+#%% [markdown]
+# load the postcode data into the database
 
-#%%
+get_ca.load_csv_duckdb(con = con,
+                       csv_path=postcode_directory,
+                       schema_file="postcodes_schema.sql",
+                       table_name="postcodes_tbl",
+                       schema_cols = get_ca.postcodes_schema)
+
+                                                 #%%
 #%%
 con.sql("SHOW TABLES;")
 

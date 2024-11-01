@@ -17,7 +17,7 @@ from io import StringIO
 import glob
 import os
 import duckdb
-from epc_schema import cols_schema_domestic, cols_schema_nondom, all_cols_polars # schema for the EPC certificates
+from epc_schema import cols_schema_domestic, cols_schema_nondom, all_cols_polars, postcodes_schema # schema for the EPC certificates
 
 """
 Functions to get geographies and EPC data for combined authorities
