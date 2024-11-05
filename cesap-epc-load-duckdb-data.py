@@ -8,8 +8,9 @@ import pandas as pd
 from janitor.polars import clean_names
 import glob
 
-download_epc = True
+download_epc = False
 download_lsoa = True
+download_postcodes = False
 
 # %% [markdown]
 # This notebook retrieves all the base data needed for comparison analysis with other Combined Authorities and loads it into a duckdb database.
@@ -116,11 +117,31 @@ lookups_2021_pldf_list = [get_ca.get_flat_data(chunk,
                     for chunk
                     in lookups_2021_chunk_list]
 #%%
-lookups_2021_pldf = pl.concat(lookups_2021_pldf_list, how='vertical_relaxed')
+lookups_2021_pldf = (pl.concat(lookups_2021_pldf_list, how='vertical_relaxed')
+                                                 .rename(lambda x: x.lower()))
+
+
+lookups_2011_chunk_list = get_ca.get_chunk_list(base_url_lsoa_2011_lookups,
+                                        params_base, 
+                                            max_records = 1000)
+
+lookups_2011_pldf_list = [get_ca.get_flat_data(chunk,
+                                    params_base,
+                                    params_other = {'where':'1=1'},
+                                    base_url = base_url_lsoa_2011_lookups)
+                        for chunk
+                        in lookups_2011_chunk_list]
+
+lookups_2011_pldf = (pl
+                    .concat(lookups_2011_pldf_list,
+                            how='vertical_relaxed')
+                            .rename(lambda x: x.lower())
+                            )
+
 #%%
 lsoas_in_cauths_iter = (lookups_2021_pldf
-                        .filter(pl.col('LAD24CD').is_in(ladcds_in_cauths))
-                        .select(pl.col('LSOA21CD'))
+                        .filter(pl.col('lad24cd').is_in(ladcds_in_cauths))
+                        .select(pl.col('lsoa21cd'))
                         .to_series())
 
 lsoas_in_cauths_chunks = [lsoas_in_cauths_iter[i:i + chunk_size]
@@ -145,46 +166,38 @@ with open("data/lsoas_in_cauths_iter.json", 'r') as f:
 lsoa_2021_poly_url_list = [get_ca.make_poly_url(base_url_2021_lsoa_polys,
                             params_base,
                             lsoas,
-                            lsoa_code_name='LSOA21CD')
+                            lsoa_code_name='lsoa21cd')
                 for lsoas in
                 lsoas_in_cauths_chunks]
 
 # a list of geopandas dataframes to hold all lsoa polygons in the combined authorities
 lsoa_2021_gdf_list = [gpd.read_file(polys_url) for polys_url in lsoa_2021_poly_url_list]
-
-lsoa_2021_gdf = gpd.GeoDataFrame(pd.concat(lsoa_2021_gdf_list,
+#%%
+lsoa_2021_gdf = (gpd.GeoDataFrame(pd.concat(lsoa_2021_gdf_list,
                                     ignore_index=True))
+                                    .drop_duplicates(subset='lsoa21cd')
+)
+
+#%%
+
+#%%
 # parquet export to import to duckdb
 lsoa_2021_gdf.to_parquet('data/all_cas_lsoa_poly_2021.parquet')
-
+#%%
 # Retrieve the 2021 LSOA points (population weighted centroids)
 lsoa_2021_pwc_df = get_ca.make_lsoa_pwc_df(base_url = base_url_lsoa_2021_centroids,
                         params_base = params_base, 
                         params_other = {'where': '1=1'},
                         max_records = 2000)
-
+#%%
 lsoa_2021_pwc_cauth_df = (lsoa_2021_pwc_df
-                    .filter(pl.col('LSOA21CD').is_in(lsoas_in_cauths_iter))
+                    .filter(pl.col('lsoa21cd').is_in(lsoas_in_cauths_iter))
                     .rename(lambda x: x.lower())
                     )
-# Retrieve the 2011 LSOA polygon data for the LEP - for joining with IMD
+#%%
+# Retrieve the 2011 LSOA polygon data - for joining with IMD
 # The latest IMD data available is for 2019
-lookups_2011_chunk_list = get_ca.get_chunk_list(base_url_lsoa_2011_lookups,
-                                        params_base, 
-                                            max_records = 1000)
 
-lookups_2011_pldf_list = [get_ca.get_flat_data(chunk,
-                                    params_base,
-                                    params_other = {'where':'1=1'},
-                                    base_url = base_url_lsoa_2011_lookups)
-                        for chunk
-                        in lookups_2011_chunk_list]
-
-lookups_2011_pldf = (pl
-                    .concat(lookups_2011_pldf_list,
-                            how='vertical_relaxed')
-                            .rename(lambda x: x.lower())
-                            )
 
 lsoacd_2011_in_cauths_iter = (lookups_2011_pldf
                             .filter(pl.col('lad11cd')
@@ -211,23 +224,23 @@ lsoa_2011_gdf_list = [gpd.read_file(polys_url) for polys_url in lsoa_2011_poly_u
 lsoa_2011_gdf = gpd.GeoDataFrame(pd.concat(lsoa_2011_gdf_list,  ignore_index=True))
 # parquet export to import to duckdb
 lsoa_2011_gdf.to_parquet('data/all_cas_lsoa_poly_2011.parquet')
-
+#%%
 lsoa_imd_df = (pl.read_csv(imd_data_path)
-                .rename(lambda x: x.lower()))
+                .rename(lambda x: x.lower())
+                .rename({'lsoa_code': 'lsoa11cd'}))
 #%% [markdown]
 # Read the POSTCODES DATA
 
 #%%
+if download_postcodes:
+    zipped_file_path = get_ca.download_zip(url = base_url_pc_centroids_zip,
+    directory=postcode_directory,
+    filename = postcode_directory)
+    # TODO: build import routine for direct import to duckdb
+    postcodes_csv_file = get_ca.extract_csv_from_zip(zip_file_path = zipped_file_path)
+    get_ca.delete_zip_file(zip_file_path = zipped_file_path)
 
-zipped_file_path = get_ca.download_zip(url = base_url_pc_centroids_zip,
-directory=postcode_directory,
-filename="postcode_centroids.zip")
-#%%
-# TODO: build import routine for direct import to duckdb
-postcodes_csv_file = get_ca.extract_csv_from_zip(zip_file_path = zipped_file_path)
-#%%
-#%%
-get_ca.delete_zip_file(zip_file_path = zipped_file_path)
+
 #%%
 # make a list of urls, download the zip files and extract the csv files
 # for domestic and non - domestic EPC data
@@ -250,6 +263,8 @@ if not download_epc:
     epc_update_pldf = get_ca.make_epc_update_pldf(la_list, from_date_dict)
 #%%
 # TENURE
+# Load all tenure LSOA data into the db and create views for 
+# subsets e.g. West of England and all cauths
 tenure_raw_df = get_ca.get_nomis_data(nomis_ts054_url, ts054_params, nomis_creds)
 
 #%%
@@ -267,52 +282,11 @@ tenure_df = (tenure_raw_df
 #%%
 tenure_df.glimpse()
 
-# %%
-ca_tenure_lsoa = (pl.scan_csv('data/ts054_tenure_nomis.csv')
-                  .select(pl.all().name.map(lambda col_name: col_name.replace(' ', '_')))
-                  .select(pl.all().name.to_lowercase())
-                  .select(pl.all().name.map(lambda col_name: col_name.replace(':', '')))
-                  .with_columns(pl.col('lsoa').str.slice(0, 9).alias('lsoacd'))
-                  .filter(pl.col('lsoacd').is_in(lsoas_in_cauths_iter))
-                  ).collect()
-
-# %%
-ca_tenure_lsoa.glimpse()
-
 # %% [markdown]
 # Load the data into a duckDB data base
 
 # %%
 con = duckdb.connect('data/ca_epc.duckdb')
-
-# %%
-try:
-    con.execute("BEGIN TRANSACTION;")
-    con.execute('INSTALL spatial;')
-    con.execute('LOAD spatial;')
-    con.execute("CREATE OR REPLACE TABLE lsoa_2021_pwc_tbl AS SELECT * FROM lsoa_2021_pwc_df")
-    con.execute("ALTER TABLE lsoa_2021_pwc_tbl ADD COLUMN geom GEOMETRY")
-    con.execute("UPDATE lsoa_2021_pwc_tbl SET geom = ST_Point(x, y)")
-    con.execute("CREATE OR REPLACE TABLE imd_lsoa_tbl AS SELECT * FROM lsoa_imd_df")
-    con.execute(f'CREATE OR REPLACE TABLE lsoa_poly_2021_tbl AS SELECT * FROM ST_Read("{path_2021_poly_parquet}")')
-    con.execute(f'CREATE OR REPLACE TABLE lsoa_poly_2011_tbl AS SELECT * FROM ST_Read("{path_2011_poly_parquet}")')
-    con.execute('CREATE UNIQUE INDEX lsoacd_poly_idx ON lsoa_poly_tbl (lsoacd)')
-    con.execute('CREATE UNIQUE INDEX lsoacd_pwc_idx ON lsoa_pwc_tbl (lsoacd)')
-    con.execute('CREATE OR REPLACE TABLE ca_tenure_lsoa_tbl AS SELECT * FROM ca_tenure_lsoa')
-    con.execute('CREATE UNIQUE INDEX lsoacd_tenure_idx ON ca_tenure_lsoa_tbl (lsoacd)')
-    con.execute('CREATE OR REPLACE TABLE ca_la_tbl AS SELECT * FROM ca_la_df')
-    con.execute('CREATE OR REPLACE TABLE imd_tbl AS SELECT * FROM imd_df')
-    con.execute('CREATE OR REPLACE TABLE postcode_centroids_tbl AS SELECT * FROM pc_centroids_df')
-    con.execute('CREATE UNIQUE INDEX postcode_centroids_idx ON postcode_centroids_tbl (PCDS)')
-    # con.execute('CREATE OR REPLACE TABLE epc_non_domestic_tbl AS SELECT * FROM epc_non_domestic_df')
-    # con.execute('CREATE UNIQUE INDEX uprn_nondom_idx ON epc_non_domestic_tbl (uprn)')
-    con.execute('CREATE OR REPLACE TABLE ca_la_dft_lookup_tbl AS SELECT * FROM ca_la_dft_lookup_df')
-    con.execute('CREATE UNIQUE INDEX ca_la_dft_lookup_idx ON ca_la_dft_lookup_tbl (ladcd)')
-    con.execute("COMMIT;")
-except Exception as e:
-    # If an error occurs, rollback the transaction
-    con.execute("ROLLBACK;")
-    print(f"Transaction rolled back due to an error: {e}")
 
 # %% [markdown]
 ### Load the EPC data into the duckdb database
@@ -342,24 +316,99 @@ get_ca.load_csv_duckdb(con = con,
                        table_name="postcodes_tbl",
                        schema_cols = get_ca.postcodes_schema)
 
-                                                 #%%
+#%%
+
+
+#%%
+lookups_2011_pldf.unique().count()
+#%%
+
+poly2021 = pl.read_parquet('data/all_cas_lsoa_poly_2021.parquet')
+poly2011 = pl.read_parquet('data/all_cas_lsoa_poly_2011.parquet')
+#%%
+poly2021.columns
+# %%
+try:
+    con.execute("BEGIN TRANSACTION;")
+    con.execute('INSTALL spatial;')
+    con.execute('LOAD spatial;')
+    # LSOA PWC
+    con.execute("CREATE OR REPLACE TABLE lsoa_2021_pwc_tbl AS SELECT * FROM lsoa_2021_pwc_df")
+    con.execute("ALTER TABLE lsoa_2021_pwc_tbl ADD COLUMN geom GEOMETRY")
+    con.execute("UPDATE lsoa_2021_pwc_tbl SET geom = ST_Point(x, y)")
+    con.execute('CREATE UNIQUE INDEX lsoacd_pwc_idx ON lsoa_2021_pwc_tbl (lsoa21cd)')
+    # IMD
+    con.execute("CREATE OR REPLACE TABLE imd_lsoa_tbl AS SELECT * FROM lsoa_imd_df")
+    con.execute("CREATE UNIQUE INDEX lsoa11cd_imd_idx ON imd_lsoa_tbl (lsoa11cd)")
+    # LSOA POLYS
+    
+    con.execute(f"""
+                CREATE OR REPLACE TABLE
+                lsoa_poly_2021_tbl AS
+                SELECT *,
+                    ST_GeomFromText(geometry::VARCHAR) as geom
+                FROM read_parquet("{path_2021_poly_parquet}");
+                """)
+
+    con.execute(f"""
+                CREATE OR REPLACE TABLE
+                lsoa_poly_2011_tbl AS
+                SELECT *,
+                    ST_GeomFromText(geometry::VARCHAR) as geom
+                FROM read_parquet("{path_2011_poly_parquet}");
+                """)
+    # INDEXES
+    con.sql("CREATE INDEX lsoa21cd_poly_idx ON lsoa_poly_2021_tbl (geom)")
+    con.sql("CREATE INDEX lsoa11cd_poly_idx ON lsoa_poly_2011_tbl (geom)")
+
+    con.execute('CREATE UNIQUE INDEX lsoa21cd_poly_idx ON lsoa_poly_2021_tbl (lsoa21cd)')
+    con.execute('CREATE UNIQUE INDEX lsoa11cd_poly_idx ON lsoa_poly_2011_tbl (lsoa11cd)')
+    # TENURE
+    con.execute('CREATE OR REPLACE TABLE tenure_tbl AS SELECT * FROM tenure_df')
+    con.execute('CREATE UNIQUE INDEX lsoacd_tenure_idx ON tenure_tbl (lsoa21cd)')
+    # POSTCODES (Index only as import outside this block)
+    con.execute('CREATE UNIQUE INDEX postcode_centroids_idx ON postcodes_tbl (pcds)')
+    con.execute("ALTER TABLE postcodes_tbl ADD COLUMN geom GEOMETRY")
+    con.execute("UPDATE postcodes_tbl SET geom = ST_Point(long, lat)")
+    # CA LA lookups
+    con.execute('CREATE OR REPLACE TABLE ca_la_tbl AS SELECT * FROM ca_la_df')
+    # NEED TO CREATE INDEXES FOR EPC TABLES
+    con.execute('CREATE UNIQUE INDEX lmk_key_idx ON epc_domestic_tbl (LMK_KEY)')
+    con.execute('CREATE UNIQUE INDEX lmk_key_idx ON epc_nondom_tbl (LMK_KEY)')
+    con.execute('CREATE OR REPLACE TABLE ca_la_dft_lookup_tbl AS SELECT * FROM ca_la_dft_lookup_df')
+    con.execute('CREATE UNIQUE INDEX ca_la_dft_lookup_idx ON ca_la_dft_lookup_tbl (ladcd)')
+    con.execute("COMMIT;")
+except Exception as e:
+    # If an error occurs, rollback the transaction
+    con.execute("ROLLBACK;")
+    print(f"Transaction rolled back due to an error: {e}")
+
+#%%
+
 #%%
 con.sql("SHOW TABLES;")
+#%%
+con.sql("DESCRIBE postcodes_tbl;")
 
 #%%
 
+con.sql("DESCRIBE epc_domestic_tbl;")
 #%%
+dup_qry = """
+SELECT LMK_KEY, COUNT(LMK_KEY) as count
+FROM epc_nondom_tbl
+GROUP BY LMK_KEY
+HAVING count > 1
+"""
+con.sql(dup_qry)
 
+
+#%%
+con.close()
 #%%
 # Verify the import
 row_count = con.execute("SELECT COUNT(*) FROM certificates").fetchone()[0]
 print(f"Total rows imported: {row_count}")
-
-
-#%%
-
-con.sql("SUMMARIZE certificates")
-
 #%%
 
 bulk_files = glob.glob('data/epc_bulk_zips/*.*')
@@ -368,11 +417,13 @@ for file in bulk_files:
     get_ca.delete_file(file)
 #%%
     
-# updated query to partially create the epc data view which removes duplicates
-    # and extracts the lodgement date parts and the nominal construction year
+# query to partially create the epc domestic
+# view which removes duplicates
+# and extracts the lodgement date parts 
+# and the nominal construction year
 
-qry_clean_ages = """
-CREATE OR REPLACE VIEW construction_age_clean AS
+qry_create_epc_domestic_vw = """
+CREATE OR REPLACE VIEW epc_domestic_vw AS
 SELECT 
     c.*,
     -- Clean the construction age band to produce a nominal construction year
@@ -404,7 +455,7 @@ INNER JOIN (
 ) latest ON c.UPRN = latest.UPRN 
     AND c.LODGEMENT_DATETIME = latest.max_date;
 """
-con.sql(qry_clean_ages)
+con.sql(qry_create_epc_domestic_vw)
 
 #%%
 # the query to create the view for epc_lep_domestic_ods_vw

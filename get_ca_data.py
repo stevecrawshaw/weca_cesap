@@ -97,8 +97,6 @@ def load_csv_duckdb(con,
         except Exception as e:
             logging.error(f"Error importing {file}: {str(e)}")
 
-
-
 def make_esri_fs_url(base_url: str,
                      service_portion: str,
                       tail_url: str) -> str:
@@ -118,7 +116,6 @@ def make_esri_fs_url(base_url: str,
         raise ValueError(f"Invalid URL: {parsed_url}")
         return None
 
-#%%
 def download_zip(url: str, directory: str = "data", filename: str = None) -> str:
     """
     Downloads a zip file from the given URL and saves it to the specified directory with an optional custom filename.
@@ -154,7 +151,6 @@ def download_zip(url: str, directory: str = "data", filename: str = None) -> str
     logging.info(f"Download completed: {file_path}")
 
     return str(file_path)
-#%%
 
 def extract_csv_from_zip(zip_file_path: str) -> str:
     """
@@ -213,8 +209,6 @@ def extract_csv_from_zip(zip_file_path: str) -> str:
         logging.info(f"Extraction completed: {extracted_csv_path}")
 
         return str(extracted_csv_path)
-
-#%%
 
 def delete_zip_file(zip_file_path: str):
     """
@@ -359,8 +353,6 @@ def extract_and_rename_csv_from_zips(zip_folder: str = "data/epc_bulk_zips") -> 
         except Exception as e:
             logging.error(f"Error processing {zip_file}: {e}")
 
-
-
 def delete_all_csv_files(folder_path):
     # Convert the folder path to a Path object
     folder = Path(folder_path)
@@ -373,7 +365,6 @@ def delete_all_csv_files(folder_path):
         logging.info(f"File deleted: {file}")
         file.unlink()
         print(f"Deleted: {file}")
-
 
 def delete_file(file_path):
     """
@@ -596,7 +587,6 @@ def get_flat_data(offset: int,
         raise requests.RequestException(f"Error fetching data from API: {e}")
     return features_df
 
-
 def make_poly_url(base_url: str,
                   params_base: dict,
                   lsoa_code_list: list,
@@ -629,7 +619,7 @@ def make_lsoa_pwc_df(base_url: str,
                                     params_other,
                                     base_url))
     lsoa_df = pl.concat(df_list).unique()
-    return lsoa_df
+    return lsoa_df.rename(lambda x: x.lower())
    
 def get_rename_dict(df: pl.DataFrame, remove_numbers, rm_numbers = False) -> dict:
     old = df.columns
@@ -947,7 +937,6 @@ def get_epc_csv(la: str,
 
     logging.info(f"EPC data successfully written to {output_file}")
 
-
 def download_epc_nondom_certificates(
     auth_token: str,
     output_file: str,
@@ -1103,4 +1092,3 @@ def make_n_construction_age(df: pl.DataFrame, new_colname: str) -> pl.DataFrame:
 
     .drop('age_int', '_8_chars', 'age_char', 'lower', 'upper')
     )
-# %%
