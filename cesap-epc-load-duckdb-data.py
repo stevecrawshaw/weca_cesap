@@ -62,6 +62,7 @@ path_2021_poly_parquet = 'data/all_cas_lsoa_poly_2021.parquet'
 chunk_size = 100 # this is used in a a where clause to set the number of lsoa polys per api call
 nomis_ts054_url = "https://www.nomisweb.co.uk/api/v01/dataset/NM_2072_1.data.csv"
 postcode_directory = "data/postcode_centroids"
+dft_csv_path = 'https://storage.googleapis.com/dft-statistics/road-traffic/downloads/data-gov-uk/local_authority_traffic.csv'
 #%% [markdown]
 # Nomis parameters for the tenure data
 #%%
@@ -96,7 +97,7 @@ f'There are {str(la_list.shape)[1:3]} Local Authorities in Combined Authorities'
 
 # %%
 ca_la_dft_lookup_df = get_ca.get_ca_la_dft_lookup(
-    dft_csv_path = 'https://storage.googleapis.com/dft-statistics/road-traffic/downloads/data-gov-uk/local_authority_traffic.csv',
+    dft_csv_path,
     la_list = la_list)
 # ca_la_dft_lookup_df.glimpse()
 
@@ -116,14 +117,15 @@ lookups_2021_pldf_list = [get_ca.get_flat_data(chunk,
                                 base_url = base_url_lsoa_2021_lookups)
                     for chunk
                     in lookups_2021_chunk_list]
-#%%
-lookups_2021_pldf = (pl.concat(lookups_2021_pldf_list, how='vertical_relaxed')
-                                                 .rename(lambda x: x.lower()))
 
+lookups_2021_pldf = (pl.concat(lookups_2021_pldf_list, how='vertical_relaxed')
+                                                 .rename(lambda x: x.lower())
+                                                 .unique())
+#%%
 
 lookups_2011_chunk_list = get_ca.get_chunk_list(base_url_lsoa_2011_lookups,
                                         params_base, 
-                                            max_records = 1000)
+                                            max_records = 2000)
 
 lookups_2011_pldf_list = [get_ca.get_flat_data(chunk,
                                     params_base,
@@ -136,6 +138,7 @@ lookups_2011_pldf = (pl
                     .concat(lookups_2011_pldf_list,
                             how='vertical_relaxed')
                             .rename(lambda x: x.lower())
+                            .unique()
                             )
 
 #%%
@@ -171,14 +174,14 @@ lsoa_2021_poly_url_list = [get_ca.make_poly_url(base_url_2021_lsoa_polys,
                 lsoas_in_cauths_chunks]
 
 # a list of geopandas dataframes to hold all lsoa polygons in the combined authorities
-lsoa_2021_gdf_list = [gpd.read_file(polys_url) for polys_url in lsoa_2021_poly_url_list]
+lsoa_2021_gdf_list = [gpd.read_file(polys_url)
+                      for polys_url 
+                      in lsoa_2021_poly_url_list]
 #%%
 lsoa_2021_gdf = (gpd.GeoDataFrame(pd.concat(lsoa_2021_gdf_list,
                                     ignore_index=True))
-                                    .drop_duplicates(subset='lsoa21cd')
+                                    .drop_duplicates(subset='LSOA21CD')
 )
-
-#%%
 
 #%%
 # parquet export to import to duckdb
@@ -221,7 +224,8 @@ lsoa_2011_poly_url_list = [get_ca.make_poly_url(base_url_2011_lsoa_polys,
 
 lsoa_2011_gdf_list = [gpd.read_file(polys_url) for polys_url in lsoa_2011_poly_url_list]
 
-lsoa_2011_gdf = gpd.GeoDataFrame(pd.concat(lsoa_2011_gdf_list,  ignore_index=True))
+lsoa_2011_gdf = gpd.GeoDataFrame(pd.concat(lsoa_2011_gdf_list,
+                                           ignore_index=True))
 # parquet export to import to duckdb
 lsoa_2011_gdf.to_parquet('data/all_cas_lsoa_poly_2011.parquet')
 #%%
@@ -316,17 +320,6 @@ get_ca.load_csv_duckdb(con = con,
                        table_name="postcodes_tbl",
                        schema_cols = get_ca.postcodes_schema)
 
-#%%
-
-
-#%%
-lookups_2011_pldf.unique().count()
-#%%
-
-poly2021 = pl.read_parquet('data/all_cas_lsoa_poly_2021.parquet')
-poly2011 = pl.read_parquet('data/all_cas_lsoa_poly_2011.parquet')
-#%%
-poly2021.columns
 # %%
 try:
     con.execute("BEGIN TRANSACTION;")
@@ -337,6 +330,11 @@ try:
     con.execute("ALTER TABLE lsoa_2021_pwc_tbl ADD COLUMN geom GEOMETRY")
     con.execute("UPDATE lsoa_2021_pwc_tbl SET geom = ST_Point(x, y)")
     con.execute('CREATE UNIQUE INDEX lsoacd_pwc_idx ON lsoa_2021_pwc_tbl (lsoa21cd)')
+    # LOOKUPS
+    con.execute("CREATE OR REPLACE TABLE lsoa_2021_lookup_tbl AS SELECT * FROM lookups_2021_pldf")
+    con.execute("CREATE UNIQUE INDEX lsoa21cd_lookup_idx ON lsoa_2021_lookup_tbl (lsoa21cd)")
+    con.execute("CREATE OR REPLACE TABLE lsoa_2011_lookup_tbl AS SELECT * FROM lookups_2011_pldf")
+    # no unique index for 2011 lookups as there are duplicates
     # IMD
     con.execute("CREATE OR REPLACE TABLE imd_lsoa_tbl AS SELECT * FROM lsoa_imd_df")
     con.execute("CREATE UNIQUE INDEX lsoa11cd_imd_idx ON imd_lsoa_tbl (lsoa11cd)")
@@ -358,8 +356,8 @@ try:
                 FROM read_parquet("{path_2011_poly_parquet}");
                 """)
     # INDEXES
-    con.sql("CREATE INDEX lsoa21cd_poly_idx ON lsoa_poly_2021_tbl (geom)")
-    con.sql("CREATE INDEX lsoa11cd_poly_idx ON lsoa_poly_2011_tbl (geom)")
+    con.sql("CREATE INDEX lsoa21cd_geom_idx ON lsoa_poly_2021_tbl (geom)")
+    con.sql("CREATE INDEX lsoa11cd_geom_idx ON lsoa_poly_2011_tbl (geom)")
 
     con.execute('CREATE UNIQUE INDEX lsoa21cd_poly_idx ON lsoa_poly_2021_tbl (lsoa21cd)')
     con.execute('CREATE UNIQUE INDEX lsoa11cd_poly_idx ON lsoa_poly_2011_tbl (lsoa11cd)')
@@ -373,14 +371,14 @@ try:
     # CA LA lookups
     con.execute('CREATE OR REPLACE TABLE ca_la_tbl AS SELECT * FROM ca_la_df')
     # NEED TO CREATE INDEXES FOR EPC TABLES
-    con.execute('CREATE UNIQUE INDEX lmk_key_idx ON epc_domestic_tbl (LMK_KEY)')
-    con.execute('CREATE UNIQUE INDEX lmk_key_idx ON epc_nondom_tbl (LMK_KEY)')
+    con.execute('CREATE UNIQUE INDEX lmk_key_dom_idx ON epc_domestic_tbl (LMK_KEY)')
+    con.execute('CREATE UNIQUE INDEX lmk_key_nondom_idx ON epc_nondom_tbl (LMK_KEY)')
     con.execute('CREATE OR REPLACE TABLE ca_la_dft_lookup_tbl AS SELECT * FROM ca_la_dft_lookup_df')
     con.execute('CREATE UNIQUE INDEX ca_la_dft_lookup_idx ON ca_la_dft_lookup_tbl (ladcd)')
     con.execute("COMMIT;")
 except Exception as e:
     # If an error occurs, rollback the transaction
-    con.execute("ROLLBACK;")
+    #con.execute("ROLLBACK;")
     print(f"Transaction rolled back due to an error: {e}")
 
 #%%
@@ -393,14 +391,6 @@ con.sql("DESCRIBE postcodes_tbl;")
 #%%
 
 con.sql("DESCRIBE epc_domestic_tbl;")
-#%%
-dup_qry = """
-SELECT LMK_KEY, COUNT(LMK_KEY) as count
-FROM epc_nondom_tbl
-GROUP BY LMK_KEY
-HAVING count > 1
-"""
-con.sql(dup_qry)
 
 
 #%%
