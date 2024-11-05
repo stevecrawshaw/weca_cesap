@@ -52,4 +52,5 @@ rsconnect/
 
 data/
 *.zip
-.*.pyc
+*.pyc
+duckdb

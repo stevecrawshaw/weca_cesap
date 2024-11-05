@@ -239,7 +239,7 @@ lsoa_imd_df = (pl.read_csv(imd_data_path)
 if download_postcodes:
     zipped_file_path = get_ca.download_zip(url = base_url_pc_centroids_zip,
     directory=postcode_directory,
-    filename = postcode_directory)
+    filename = "postcodes.zip")
     # TODO: build import routine for direct import to duckdb
     postcodes_csv_file = get_ca.extract_csv_from_zip(zip_file_path = zipped_file_path)
     get_ca.delete_zip_file(zip_file_path = zipped_file_path)
@@ -377,8 +377,7 @@ try:
     con.execute('CREATE UNIQUE INDEX ca_la_dft_lookup_idx ON ca_la_dft_lookup_tbl (ladcd)')
     con.execute("COMMIT;")
 except Exception as e:
-    # If an error occurs, rollback the transaction
-    #con.execute("ROLLBACK;")
+    # If an error occurs duckdb rolls back automatically
     print(f"Transaction rolled back due to an error: {e}")
 
 #%%
@@ -391,8 +390,8 @@ con.sql("DESCRIBE postcodes_tbl;")
 #%%
 
 con.sql("DESCRIBE epc_domestic_tbl;")
-
-
+#%%
+con.sql("EXPORT DATABASE 'data/db_export' (FORMAT PARQUET);")
 #%%
 con.close()
 #%%
@@ -548,7 +547,7 @@ con.execute('CREATE UNIQUE INDEX uprn_idx ON epc_domestic_tbl (uprn)')
 con.execute(create_epc_domestic_view_qry)
 con.execute(create_epc_non_domestic_view_qry)
 # %%
-del ca_tenure_lsoa
+
 
 # %%
 # temporary files to delete
