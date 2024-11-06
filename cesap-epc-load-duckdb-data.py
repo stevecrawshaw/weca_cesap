@@ -550,6 +550,9 @@ LEFT JOIN ca_la_tbl
         FROM ca_la_tbl
         WHERE cauthnm = \'West of England\');
 """
+con.execute("INSTALL SPATIAL;")
+con.execute("LOAD SPATIAL;")
+
 con.sql(qry_create_epc_domestic_lep_vw)
 
 #%%
