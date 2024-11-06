@@ -56,6 +56,86 @@ def connect_duckdb(db_path: str) -> duckdb.DuckDBPyConnection:
         logging.error(f"Error connecting to DuckDB database: {e}")
         raise
 
+def load_csv_duckdb_batch(con,
+                    csv_path,
+                    schema_file, 
+                    table_name: str = 'epc_domestic_tbl',
+                    schema_cols: str = cols_schema_domestic,
+                    batch_size: int = 100000):
+    """
+    Load CSV files into a DuckDB database with batch processing.
+    
+    Parameters:
+    con (duckdb.DuckDBPyConnection): The DuckDB connection object.
+    csv_path (str): The path to the directory containing the CSV files.
+    schema_file (str): The path to the schema definition file.
+    table_name (str): Name of the target table.
+    schema_cols (str): Schema column definitions.
+    batch_size (int): Number of rows to process in each batch.
+    """
+    # First, create the table from schema
+    try:
+        with open(schema_file, 'r') as f:
+            con.execute(f.read())
+            logging.info(f"Schema from {schema_file} executed successfully.")
+    except Exception as e:
+        logging.error(f"Error creating table: {str(e)}")
+        return
+
+    # Get list of CSV files
+    csv_files = glob.glob(f'{csv_path}/*.csv')
+    if not csv_files:
+        logging.warning(f"No CSV files found in {csv_path}")
+        return None
+
+    # Process each file
+    for file in csv_files:
+        try:
+            logging.info(f"Processing {os.path.basename(file)}...")
+            
+            # Get total number of rows in the file (excluding header)
+            row_count = int(con.execute(f"""
+                SELECT COUNT(*) 
+                FROM read_csv(?, 
+                            header=true,
+                            auto_detect=false,
+                            columns=?,
+                            filename=?)
+            """, [file, schema_cols, csv_path]).fetchone()[0])
+            
+            # Process in batches
+            for offset in range(0, row_count, batch_size):
+                try:
+                    con.execute(f"""
+                        INSERT INTO {table_name} 
+                        SELECT * FROM read_csv(?, 
+                                             header=true,
+                                             auto_detect=false,
+                                             columns=?,
+                                             filename=?,
+                                             OFFSET ?,
+                                             number_of_rows=?)
+                    """, [file, schema_cols, csv_path, offset + 1, min(batch_size, row_count - offset)])
+                    
+                    logging.info(f"Imported rows {offset + 1} to {min(offset + batch_size, row_count)} from {os.path.basename(file)}")
+                    
+                    # Commit after each batch
+                    con.commit()
+                
+                except Exception as e:
+                    logging.error(f"Error importing batch starting at row {offset} in {file}: {str(e)}")
+                    continue
+            
+            logging.info(f"Successfully completed import of {os.path.basename(file)}.")
+            
+        except Exception as e:
+            logging.error(f"Error processing {file}: {str(e)}")
+            continue
+        
+        # Optional: Force garbage collection after each file
+        import gc
+        gc.collect()
+
 def load_csv_duckdb(con,
                     csv_path,
                     schema_file, 

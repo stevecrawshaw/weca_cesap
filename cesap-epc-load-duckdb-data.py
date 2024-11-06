@@ -172,7 +172,7 @@ lsoa_2021_poly_url_list = [get_ca.make_poly_url(base_url_2021_lsoa_polys,
                             lsoa_code_name='lsoa21cd')
                 for lsoas in
                 lsoas_in_cauths_chunks]
-
+#%%
 # a list of geopandas dataframes to hold all lsoa polygons in the combined authorities
 lsoa_2021_gdf_list = [gpd.read_file(polys_url)
                       for polys_url 
@@ -288,20 +288,15 @@ tenure_df.glimpse()
 
 # %% [markdown]
 # Load the data into a duckDB data base
-
 # %%
 con = duckdb.connect('data/ca_epc.duckdb')
-
+#%%
+con.close()
 # %% [markdown]
 ### Load the EPC data into the duckdb database
     # It's not done in the main commit block because multiple csv files are inported
     # rather than a single dataframe
 #%%
-get_ca.load_csv_duckdb(con = con,
-                       csv_path="data/epc_bulk_nondom_zips",
-                       schema_file="nondom_certificates_schema.sql",
-                       table_name="epc_nondom_tbl",
-                       schema_cols = get_ca.cols_schema_nondom)
 
 #%%
 # now domestic certs
@@ -310,7 +305,13 @@ get_ca.load_csv_duckdb(con = con,
                        schema_file="certificates_schema.sql",
                        table_name="epc_domestic_tbl",
                        schema_cols=get_ca.cols_schema_domestic)
+#%%
 
+get_ca.load_csv_duckdb(con = con,
+                       csv_path="data/epc_bulk_nondom_zips",
+                       schema_file="nondom_certificates_schema.sql",
+                       table_name="epc_nondom_tbl",
+                       schema_cols=get_ca.cols_schema_nondom)
 #%% [markdown]
 # load the postcode data into the database
 
@@ -395,10 +396,6 @@ con.sql("EXPORT DATABASE 'data/db_export' (FORMAT PARQUET);")
 #%%
 con.close()
 #%%
-# Verify the import
-row_count = con.execute("SELECT COUNT(*) FROM certificates").fetchone()[0]
-print(f"Total rows imported: {row_count}")
-#%%
 
 bulk_files = glob.glob('data/epc_bulk_zips/*.*')
 
@@ -406,6 +403,9 @@ for file in bulk_files:
     get_ca.delete_file(file)
 #%%
     
+con.sql("SHOW TABLES;")
+#%%
+#%%
 # query to partially create the epc domestic
 # view which removes duplicates
 # and extracts the lodgement date parts 
@@ -416,138 +416,204 @@ CREATE OR REPLACE VIEW epc_domestic_vw AS
 SELECT 
     c.*,
     -- Clean the construction age band to produce a nominal construction year
-    CASE 
-        WHEN CONSTRUCTION_AGE_BAND IS NULL THEN NULL
-        WHEN REGEXP_REPLACE(CONSTRUCTION_AGE_BAND, '[A-Za-z\\s:!]', '', 'g') = '' THEN NULL
-        WHEN LOWER(CONSTRUCTION_AGE_BAND) LIKE '%before%' THEN 1899
-        WHEN REGEXP_REPLACE(CONSTRUCTION_AGE_BAND, '[A-Za-z\\s:!]', '', 'g') LIKE '%-%' 
-        THEN (
-            CAST(SPLIT_PART(REGEXP_REPLACE(CONSTRUCTION_AGE_BAND, '[A-Za-z\\s:!]', '', 'g'), '-', 1) AS INTEGER) +
-            CAST(SPLIT_PART(REGEXP_REPLACE(CONSTRUCTION_AGE_BAND, '[A-Za-z\\s:!]', '', 'g'), '-', 2) AS INTEGER)
-        ) / 2
-        ELSE CAST(REGEXP_REPLACE(CONSTRUCTION_AGE_BAND, '[A-Za-z\\s:!]', '', 'g') AS INTEGER)
-    END AS nominal_construction_year,
+    CAST(
+        CASE 
+            WHEN CONSTRUCTION_AGE_BAND IS NULL THEN NULL
+            WHEN REGEXP_REPLACE(CONSTRUCTION_AGE_BAND, '[A-Za-z\\s:!]', '', 'g') = '' THEN NULL
+            WHEN LOWER(CONSTRUCTION_AGE_BAND) LIKE '%before%' THEN 1899
+            WHEN REGEXP_REPLACE(CONSTRUCTION_AGE_BAND, '[A-Za-z\\s:!]', '', 'g') LIKE '%-%' 
+            THEN (
+                CAST(SPLIT_PART(REGEXP_REPLACE(CONSTRUCTION_AGE_BAND, '[A-Za-z\\s:!]', '', 'g'), '-', 1) AS INTEGER) +
+                CAST(SPLIT_PART(REGEXP_REPLACE(CONSTRUCTION_AGE_BAND, '[A-Za-z\\s:!]', '', 'g'), '-', 2) AS INTEGER)
+            ) / 2
+            ELSE CAST(REGEXP_REPLACE(CONSTRUCTION_AGE_BAND, '[A-Za-z\\s:!]', '', 'g') AS INTEGER)
+        END AS INTEGER
+    ) AS NOMINAL_CONSTRUCTION_YEAR,
+    -- Clean the construction age band to produce a construction epoch
+    CASE WHEN CAST(NOMINAL_CONSTRUCTION_YEAR AS INTEGER) < 1900 THEN 'Before 1900'
+         WHEN (CAST(NOMINAL_CONSTRUCTION_YEAR AS INTEGER) >= 1900) AND (CAST(NOMINAL_CONSTRUCTION_YEAR AS INTEGER) <= 1930) THEN '1900 - 1930'
+         WHEN CAST(NOMINAL_CONSTRUCTION_YEAR AS INTEGER) > 1930 THEN '1930 to present'
+         ELSE 'Unknown' END AS CONSTRUCTION_EPOCH,
     -- Extract the day, month, and year from the lodgement datetime
     date_part('day', c.LODGEMENT_DATETIME)
         AS LODGEMENT_DAY,
     date_part('month', c.LODGEMENT_DATETIME)
         AS LODGEMENT_MONTH,
     date_part('year', c.LODGEMENT_DATETIME)
-        AS LODGEMENT_YEAR
-FROM certificates c
+        AS LODGEMENT_YEAR,
+        -- Select the postcodes table columns
+    postcodes_tbl.lsoa21,
+    postcodes_tbl.msoa21,
+    postcodes_tbl.lsoa11,
+    postcodes_tbl.msoa11,
+    postcodes_tbl.lat,
+    postcodes_tbl.long,
+    postcodes_tbl.osnrth1m,
+    postcodes_tbl.oseast1m,
+    ST_AsText(postcodes_tbl.geom) as geom_text,
+    postcodes_tbl.imd,
+    postcodes_tbl.pcds,
+    tenure_tbl.*,
+    imd_lsoa_tbl.*
+FROM epc_domestic_tbl c
 -- Join the certificates table with the latest certificates for each UPRN
 -- This is to ensure that we only have the latest certificate for each UPRN
 INNER JOIN (
     SELECT UPRN, MAX(LODGEMENT_DATETIME) as max_date
-    FROM certificates
+    FROM epc_domestic_tbl
     GROUP BY UPRN
 ) latest ON c.UPRN = latest.UPRN 
-    AND c.LODGEMENT_DATETIME = latest.max_date;
+    AND c.LODGEMENT_DATETIME = latest.max_date
+
+LEFT JOIN postcodes_tbl ON c.POSTCODE = postcodes_tbl.pcds
+
+LEFT JOIN tenure_tbl ON postcodes_tbl.lsoa21 = tenure_tbl.lsoa21cd
+
+LEFT JOIN imd_lsoa_tbl ON postcodes_tbl.lsoa11 = imd_lsoa_tbl.lsoa11cd;
 """
+con.execute("INSTALL SPATIAL;")
+con.execute("LOAD SPATIAL;")
 con.sql(qry_create_epc_domestic_vw)
-
 #%%
-# the query to create the view for epc_lep_domestic_ods_vw
-create_epc_domestic_view_qry = '''
-CREATE OR REPLACE VIEW epc_lep_domestic_ods_vw AS
 
-SELECT   ROW_NUMBER() OVER (ORDER BY lmk_key) AS rowname,
-         lmk_key,
-         local_authority,
-         property_type,
-         transaction_type,
-         tenure_epc as tenure,
-         walls_description,
-         roof_description,
-         walls_energy_eff,
-         roof_energy_eff,
-         mainheat_description,
-         mainheat_energy_eff,
-         mainheat_env_eff,
-         main_fuel,
-         solar_water_heating_flag,
-         construction_age_band,
-         current_energy_rating,
-         potential_energy_rating,
-         co2_emissions_current,
-         co2_emissions_potential,
-         co2_emiss_curr_per_floor_area,
-         number_habitable_rooms,
-         number_heated_rooms,
-         photo_supply,
-         total_floor_area,
-         building_reference_number,
-         built_form,
-         lsoa21,
-         msoa21,
-         lat,
-         long,
-         imd,
-         total,
-         owned,
-         social_rented,
-         private_rented,
-         date,
-         year,
-         month,
-         imd_decile as n_imd_decile,
-         n_nominal_construction_date,
-         CASE WHEN n_nominal_construction_date < 1900 THEN 'Before 1900'
-         WHEN (n_nominal_construction_date >= 1900) AND (n_nominal_construction_date <= 1930) THEN '1900 - 1930'
-         WHEN n_nominal_construction_date > 1930 THEN '1930 to present'
-         ELSE 'Unknown' END AS construction_epoch,
-         ca_la_tbl.ladnm as ladnm,
-        FROM epc_domestic_tbl
+# query to create the epc domestic view for export to ODS
+# this view subsets the data to the West of England Combined Authority
 
-        LEFT JOIN postcode_centroids_tbl ON epc_domestic_tbl.postcode = postcode_centroids_tbl.pcds
+qry_create_epc_domestic_lep_vw = """
+CREATE OR REPLACE VIEW epc_domestic_lep_vw AS
+SELECT 
+    c.*,
+    -- Clean the construction age band to produce a nominal construction year
+    CAST(
+        CASE 
+            WHEN CONSTRUCTION_AGE_BAND IS NULL THEN NULL
+            WHEN REGEXP_REPLACE(CONSTRUCTION_AGE_BAND, '[A-Za-z\\s:!]', '', 'g') = '' THEN NULL
+            WHEN LOWER(CONSTRUCTION_AGE_BAND) LIKE '%before%' THEN 1899
+            WHEN REGEXP_REPLACE(CONSTRUCTION_AGE_BAND, '[A-Za-z\\s:!]', '', 'g') LIKE '%-%' 
+            THEN (
+                CAST(SPLIT_PART(REGEXP_REPLACE(CONSTRUCTION_AGE_BAND, '[A-Za-z\\s:!]', '', 'g'), '-', 1) AS INTEGER) +
+                CAST(SPLIT_PART(REGEXP_REPLACE(CONSTRUCTION_AGE_BAND, '[A-Za-z\\s:!]', '', 'g'), '-', 2) AS INTEGER)
+            ) / 2
+            ELSE CAST(REGEXP_REPLACE(CONSTRUCTION_AGE_BAND, '[A-Za-z\\s:!]', '', 'g') AS INTEGER)
+        END AS INTEGER
+    ) AS NOMINAL_CONSTRUCTION_YEAR,
+    -- Clean the construction age band to produce a construction epoch
+    CASE WHEN CAST(NOMINAL_CONSTRUCTION_YEAR AS INTEGER) < 1900 THEN 'Before 1900'
+         WHEN (CAST(NOMINAL_CONSTRUCTION_YEAR AS INTEGER) >= 1900) AND (CAST(NOMINAL_CONSTRUCTION_YEAR AS INTEGER) <= 1930) THEN '1900 - 1930'
+         WHEN CAST(NOMINAL_CONSTRUCTION_YEAR AS INTEGER) > 1930 THEN '1930 to present'
+         ELSE 'Unknown' END AS CONSTRUCTION_EPOCH,
+    -- Extract the day, month, and year from the lodgement datetime
+    date_part('day', c.LODGEMENT_DATETIME)
+        AS LODGEMENT_DAY,
+    date_part('month', c.LODGEMENT_DATETIME)
+        AS LODGEMENT_MONTH,
+    date_part('year', c.LODGEMENT_DATETIME)
+        AS LODGEMENT_YEAR,
+        -- Select the postcodes table columns
+    postcodes_tbl.lsoa21,
+    postcodes_tbl.msoa21,
+    postcodes_tbl.lsoa11,
+    postcodes_tbl.msoa11,
+    postcodes_tbl.lat,
+    postcodes_tbl.long,
+    postcodes_tbl.osnrth1m,
+    postcodes_tbl.oseast1m,
+    ST_AsText(postcodes_tbl.geom) as geom_text,
+    postcodes_tbl.imd,
+    postcodes_tbl.pcds,
+    tenure_tbl.*,
+    imd_lsoa_tbl.*,
+    ca_la_tbl.ladnm,
+    ca_la_tbl.cauthnm,
+    ca_la_tbl.ladcd
+FROM epc_domestic_tbl c
+-- Join the certificates table with the latest certificates for each UPRN
+-- This is to ensure that we only have the latest certificate for each UPRN
+INNER JOIN (
+    SELECT UPRN, MAX(LODGEMENT_DATETIME) as max_date
+    FROM epc_domestic_tbl
+    GROUP BY UPRN
+) latest ON c.UPRN = latest.UPRN 
+    AND c.LODGEMENT_DATETIME = latest.max_date
 
-        LEFT JOIN ca_tenure_lsoa_tbl ON postcode_centroids_tbl.lsoa21 = ca_tenure_lsoa_tbl.lsoacd
+LEFT JOIN postcodes_tbl ON c.POSTCODE = postcodes_tbl.pcds
 
-        LEFT JOIN ca_la_tbl 
-        ON ca_la_tbl.ladcd = epc_domestic_tbl.local_authority
+LEFT JOIN tenure_tbl ON postcodes_tbl.lsoa21 = tenure_tbl.lsoa21cd
 
-        LEFT JOIN imd_tbl
-        ON ca_tenure_lsoa_tbl.lsoacd = imd_tbl.lsoacd
+LEFT JOIN imd_lsoa_tbl ON postcodes_tbl.lsoa11 = imd_lsoa_tbl.lsoa11cd
 
-        WHERE local_authority IN 
+LEFT JOIN ca_la_tbl 
+        ON ca_la_tbl.ladcd = c.LOCAL_AUTHORITY
+
+ WHERE local_authority IN 
         (SELECT ladcd
         FROM ca_la_tbl
-        WHERE cauthnm = \'West of England\')
-'''
+        WHERE cauthnm = \'West of England\');
+"""
+con.sql(qry_create_epc_domestic_lep_vw)
 
+#%%
+
+
+#%%
+con.sql("SUMMARIZE epc_domestic_lep_vw;")
+
+#%%
+
+con.sql("SHOW TABLES;")
+
+#%%
+con.sql("SELECT COUNT(*) FROM epc_nondom_tbl;")
+
+#%%
+con.sql("FROM postcodes_tbl LIMIT 10;").pl().glimpse()
+
+#%%
+con.sql("DESCRIBE epc_nondom_tbl;")
 #%%
 create_epc_non_domestic_view_qry = """
  CREATE OR REPLACE VIEW epc_non_domestic_ods_vw AS
         SELECT
-                epc_non_domestic_tbl.* EXCLUDE postcode,
+                c.*,
                 ca_la_tbl.*,
                 p.lsoa21,
                 p.lat,
-                p.long
-        FROM epc_non_domestic_tbl
+                p.long,
+    date_part('day', c.LODGEMENT_DATETIME)
+        AS LODGEMENT_DAY,
+    date_part('month', c.LODGEMENT_DATETIME)
+        AS LODGEMENT_MONTH,
+    date_part('year', c.LODGEMENT_DATETIME)
+        AS LODGEMENT_YEAR
+        FROM epc_nondom_tbl c
+-- Join the certificates table with the latest certificates for each UPRN
+-- This is to ensure that we only have the latest certificate for each UPRN
+INNER JOIN (
+    SELECT UPRN, MAX(LODGEMENT_DATETIME) as max_date
+    FROM epc_nondom_tbl
+    GROUP BY UPRN
+) latest ON c.UPRN = latest.UPRN 
+    AND c.LODGEMENT_DATETIME = latest.max_date
 
 INNER JOIN
         ca_la_tbl 
-        ON epc_non_domestic_tbl.local_authority = ca_la_tbl.ladcd
+        ON c.LOCAL_AUTHORITY = ca_la_tbl.ladcd
 INNER JOIN 
         
         (SELECT pcds, lsoa21, lat, long 
-        FROM postcode_centroids_tbl) as p
-        ON epc_non_domestic_tbl.postcode = p.pcds
-WHERE ca_la_tbl.ladnm 
-        IN ('Bristol, City of',
-        'Bath and North East Somerset',
-        'North Somerset',
-        'South Gloucestershire');
-"""
-# %%
-con.execute('CREATE OR REPLACE TABLE epc_domestic_tbl AS SELECT * FROM epc_domestic_df')
-con.execute('CREATE UNIQUE INDEX uprn_idx ON epc_domestic_tbl (uprn)')
-# make the domestic and non domestic views for export to ODS
-con.execute(create_epc_domestic_view_qry)
-con.execute(create_epc_non_domestic_view_qry)
-# %%
+        FROM postcodes_tbl) as p
+        ON c.POSTCODE = p.pcds
 
+WHERE c.LOCAL_AUTHORITY IN 
+        (SELECT ladcd
+        FROM ca_la_tbl
+        WHERE ca_la_tbl.cauthnm = \'West of England\');
+"""
+con.sql(create_epc_non_domestic_view_qry)
+# %%
+con.sql("SHOW TABLES;")
+# %%
+con.sql("FROM epc_non_domestic_ods_vw LIMIT 5;")
 
 # %%
 # temporary files to delete
@@ -559,7 +625,7 @@ con.execute("EXPORT DATABASE 'data/db_export' (FORMAT PARQUET);")
 
 # %%
 con.close()
-
+con.close()
 # %% [markdown]
 # Introspect Database
 # 
