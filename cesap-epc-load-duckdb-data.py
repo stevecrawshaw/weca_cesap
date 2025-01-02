@@ -628,7 +628,6 @@ con.execute("EXPORT DATABASE 'data/db_export' (FORMAT PARQUET);")
 
 # %%
 con.close()
-con.close()
 # %% [markdown]
 # Introspect Database
 # 
