@@ -89,7 +89,7 @@ ladcds_in_cauths = ca_la_codes # this is the same as ca_la_codes RATIONALISE
 # ca_la_df.glimpse()
 # %%
 la_list = (ca_la_df['ladcd']) #includes north somerset
-ladnm = tuple(ca_la_df['ladnm'].to_list())
+ladnm = tuple(ca_la_df['ladnm'])
 f'There are {str(la_list.shape)[1:3]} Local Authorities in Combined Authorities'
 #%%
 # %% [markdown]
